@@ -1,0 +1,620 @@
+{% extends "base.html" %}
+
+{% block title %}Vendor Master | NVS Vendor Portal{% endblock %}
+
+{% block content %}
+<div class="space-y-8 animate-in fade-in duration-700">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold">Vendor <span class="gradient-text">Master</span></h1>
+            <p class="text-slate-400 mt-2">Manage partners, view KYC status, and onboarding details.</p>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="copyInviteLink()"
+                class="glass px-6 py-3 rounded-xl font-bold flex items-center space-x-2 text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1">
+                    </path>
+                </svg>
+                <span>Invite Link</span>
+            </button>
+            <button onclick="openAddVendorModal()"
+                class="btn-primary px-6 py-3 rounded-xl font-bold flex items-center space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span>Add Vendor</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Grid.js Container -->
+    <div id="vendor-grid" class="glass rounded-3xl overflow-hidden p-6"></div>
+</div>
+
+<!-- View Documents Modal -->
+<div id="docs-modal"
+    class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm"
+    onclick="if(event.target === this) this.classList.add('hidden')">
+    <div class="glass w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center gradient-bg">
+            <h3 class="font-bold text-lg">Registration Documents</h3>
+            <button onclick="document.getElementById('docs-modal').classList.add('hidden')"
+                class="text-slate-900 hover:text-black bg-white/30 hover:bg-white/50 rounded-full p-1 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+        <div class="p-8 space-y-4" id="docs-list">
+            <!-- Dynamic list of documents -->
+            <p class="text-xs text-slate-500 italic">Loading documents...</p>
+        </div>
+        <div class="p-6 bg-white/5 border-t border-white/10 flex justify-end">
+            <button onclick="document.getElementById('docs-modal').classList.add('hidden')"
+                class="bg-slate-800 px-6 py-2 rounded-xl font-bold text-sm">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Tax Doc Modal -->
+<div id="upload-tax-modal"
+    class="hidden fixed inset-0 z-[120] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm"
+    onclick="if(event.target === this) closeUploadTaxModal()">
+    <div class="glass w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center gradient-bg">
+            <h3 class="font-bold text-lg">Upload Form 16 / 16A</h3>
+            <button onclick="closeUploadTaxModal()"
+                class="text-slate-900 hover:text-black bg-white/30 hover:bg-white/50 rounded-full p-1 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <form id="upload-tax-form" class="p-8 space-y-4">
+            <input type="hidden" id="tax_vendor_id">
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1">Financial Year</label>
+                <select id="tax_year" required
+                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                    <option value="2024-2025">2024-2025</option>
+                    <option value="2025-2026">2025-2026</option>
+                </select>
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1">Quarter</label>
+                <select id="tax_quarter" required
+                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                    <option value="Q1">Q1 (Apr-Jun)</option>
+                    <option value="Q2">Q2 (Jul-Sep)</option>
+                    <option value="Q3">Q3 (Oct-Dec)</option>
+                    <option value="Q4">Q4 (Jan-Mar)</option>
+                </select>
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1">Document Type</label>
+                <select id="tax_type" required
+                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                    <option value="Form 16A">Form 16A (Quarterly)</option>
+                    <option value="Form 16">Form 16 (Annual)</option>
+                </select>
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1">Remarks</label>
+                <textarea id="tax_remarks" placeholder="Add any notes here..."
+                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none text-sm min-h-[80px]"></textarea>
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1">File (PDF Only)</label>
+                <input type="file" id="tax_file" accept=".pdf" required
+                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none text-slate-500">
+            </div>
+            <div class="pt-4">
+                <button type="submit" class="w-full btn-primary py-3 rounded-xl font-bold shadow-lg shadow-teal-500/20">Upload Document</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add/Edit Vendor Modal -->
+<div id="vendor-modal"
+    class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm"
+    onclick="if(event.target === this) closeVendorModal()">
+    <div class="glass w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center gradient-bg">
+            <h3 class="font-bold text-lg" id="modal-title">Add New Vendor</h3>
+            <button onclick="closeVendorModal()"
+                class="text-slate-900 hover:text-black bg-white/30 hover:bg-white/50 rounded-full p-1 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+        <form id="vendor-form" class="p-8 space-y-4 overflow-y-auto flex-1">
+            <input type="hidden" id="vendor-id">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Company Name</label>
+                    <input type="text" id="company_name" required
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Entity Type</label>
+                    <select id="entity_type"
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none text-slate-700 dark:text-slate-300">
+                        <option value="Company">Private Ltd Company</option>
+                        <option value="Sole Proprietor">Sole Proprietorship</option>
+                        <option value="Partnership">Partnership Firm</option>
+                        <option value="LLP">Limited Liability Partnership</option>
+                        <option value="HUF">Hindu Undivided Family</option>
+                        <option value="Trust">Trust/Society</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Contact Person</label>
+                    <input type="text" id="contact_person" required
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Email</label>
+                    <input type="email" id="email" required
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Mobile</label>
+                    <input type="text" id="mobile" required
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">PAN</label>
+                    <input type="text" id="pan"
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">GSTIN</label>
+                    <input type="text" id="gstin"
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Bank Name</label>
+                    <input type="text" id="bank_name"
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Account Number</label>
+                    <input type="text" id="bank_account_no"
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">IFSC Code</label>
+                    <input type="text" id="ifsc_code"
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+            </div>
+
+            <div class="md:col-span-2 pt-4 pb-2">
+                <h4 class="text-sm font-bold text-teal-600 dark:text-teal-400 border-b border-white/10 pb-2">Tax & Compliance</h4>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1">TDS Applicable?</label>
+                <select id="tds_applicable"
+                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none"
+                    onchange="toggleTdsField()">
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                </select>
+            </div>
+            <div id="tds_fields" class="contents" style="display:none;">
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">TDS Rate (%)</label>
+                    <input type="number" id="tds_rate" step="0.1" placeholder="e.g. 10.0"
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Nature of Payment</label>
+                    <input type="text" id="tds_nature_of_payment" placeholder="e.g. 194C - Contractors"
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none">
+                </div>
+                <div class="md:col-span-2 space-y-1 mt-4">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Internal Remarks</label>
+                    <textarea id="remarks" placeholder="Add any internal notes about this vendor..."
+                        class="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none min-h-[100px] text-sm"></textarea>
+                </div>
+            </div>
+            </div>
+        </form>
+        <div class="p-6 border-t border-white/10 flex space-x-4 bg-slate-50 dark:bg-white/5">
+            <button type="button" onclick="closeVendorModal()"
+                class="flex-1 glass py-3 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-white">Cancel</button>
+            <button type="submit" form="vendor-form"
+                class="flex-1 btn-primary py-3 rounded-xl font-bold border border-teal-500/50">Save Vendor</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============ SECURITY: Auth Wrapper ============
+    function authFetch(url, options = {}) {
+        const token = localStorage.getItem('auth_token');
+        return fetch(url, {
+            ...options,
+            headers: {
+                ...(options.headers || {}),
+                'Authorization': token || ''
+            }
+        });
+    }
+
+    const vendorGrid = new gridjs.Grid({
+        columns: [
+            { name: "Company", width: '15%' },
+            { name: "Entity", width: '10%' },
+            { name: "Contact", width: '10%' },
+            { name: "Email", width: '15%' },
+            { name: "Mobile", width: '10%' },
+            { name: "PAN", width: '10%' },
+            { name: "GSTIN", width: '12%' },
+            { name: "Bank", width: '15%', formatter: (cell) => cell ? cell : '-' },
+            {
+                name: "Status", width: '10%',
+                formatter: (cell) => {
+                    const s = (cell || '').toString().trim().toLowerCase();
+                    return gridjs.html(`<span class="px-2 py-1 rounded-full text-[10px] font-bold ${s === 'verified' ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#F59E0B]/20 text-[#F59E0B]'}">${s.toUpperCase() || 'UNKNOWN'}</span>`);
+                }
+            },
+            {
+                name: "Actions", width: '15%',
+                formatter: (cell, row) => {
+                    const vendorId = row.cells[10]?.data;
+                    const rawStatus = row.cells[8]?.data;
+                    const status = (rawStatus || '').toString().trim().toLowerCase();
+                    const role = localStorage.getItem('user_role');
+
+                    if (!vendorId) return '';
+
+                    // SECURITY: Finance can only view, not modify
+                    if (role === 'finance') {
+                        return gridjs.html(`
+                        <button onclick="viewVendorDocs(${vendorId})" class="text-teal-600 dark:text-teal-400 hover:opacity-80 p-2" title="View Documents">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </button>
+                    `);
+                    }
+
+                    let actions = `<div class="flex items-center space-x-1 justify-end">`;
+                    
+                    // Approval Logic
+                    if ((status === 'pending' || status === 'active') && (role === 'admin' || role === 'superadmin')) {
+                        actions += `
+                        <button onclick="approveVendor(${vendorId})" class="bg-[#10B981] text-white px-3 py-1 rounded-lg text-[10px] font-bold hover:opacity-90 transition-all shadow-md shadow-emerald-500/20 mr-1">Approve</button>`;
+                    }
+
+                    if (role === 'admin' || role === 'superadmin') {
+                        actions += `
+                        <button onclick="editVendor('${vendorId}')" class="text-amber-500 hover:bg-amber-500/10 p-1.5 rounded-lg transition-colors" title="Edit">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        </button>
+                        <button onclick="openUploadTaxModal(${vendorId})" class="text-emerald-500 hover:bg-emerald-500/10 p-1.5 rounded-lg transition-colors" title="Upload 16 / 16A">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        </button>
+                        <button onclick="inactivateVendor(${vendorId})" class="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition-colors" title="Mark Inactive">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                        </button>
+                    `;
+                    }
+                    
+                    actions += `
+                        <button onclick="viewVendorDocs(${vendorId})" class="text-sky-500 hover:bg-sky-500/10 p-1.5 rounded-lg transition-colors" title="View Documents">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </button>
+                    </div>`;
+                    return gridjs.html(actions);
+                }
+            },
+            { name: "ID", hidden: true }
+        ],
+        server: {
+            url: '/api/admin/vendors',
+            headers: {
+                'Authorization': localStorage.getItem('auth_token') || ''
+            },
+            then: data => data.map(v => [
+            v.company_name,
+            v.entity_type || 'Company',
+            v.contact_person || '-',
+            v.email,
+                v.mobile,
+                v.pan ? `${v.pan.substring(0, 5)}****${v.pan.substring(9)}` : '-',
+                v.gstin || '-',
+                (v.bank_name ? `${v.bank_name} - ****${v.bank_account_no?.slice(-4) || ''}` : '-'),
+                v.status,
+                null,
+                v.id
+            ])
+        },
+        search: true,
+        sort: true,
+        pagination: { limit: 10 },
+        className: {
+            td: 'text-slate-700 dark:text-slate-200 text-sm py-3 border-b border-slate-200 dark:border-white/5',
+            th: 'text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/5',
+            table: 'w-full'
+        },
+        style: {
+            table: { 'background-color': 'transparent' },
+            th: { 'background-color': 'transparent' },
+            td: { 'background-color': 'transparent' }
+        }
+    }).render(document.getElementById("vendor-grid"));
+
+    function openAddVendorModal() {
+        document.getElementById('modal-title').textContent = 'Add New Vendor';
+        document.getElementById('vendor-form').reset();
+        document.getElementById('vendor-id').value = '';
+        document.getElementById('vendor-modal').classList.remove('hidden');
+    }
+
+    function closeVendorModal() {
+        document.getElementById('vendor-modal').classList.add('hidden');
+    }
+
+    function toggleTdsField() {
+        const isTds = document.getElementById('tds_applicable').value;
+        const fields = document.getElementById('tds_fields');
+        if (isTds == "1") {
+            fields.style.display = "contents";
+            // "contents" allows the children (divs) to participate in the grid layout directly
+        } else {
+            fields.style.display = "none";
+        }
+    }
+
+    document.getElementById('vendor-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            company_name: document.getElementById('company_name').value,
+            entity_type: document.getElementById('entity_type').value,
+            contact_person: document.getElementById('contact_person').value,
+            email: document.getElementById('email').value,
+            mobile: document.getElementById('mobile').value,
+            pan: document.getElementById('pan').value,
+            gstin: document.getElementById('gstin').value,
+            bank_account_no: document.getElementById('bank_account_no').value,
+            bank_name: document.getElementById('bank_name').value,
+            ifsc_code: document.getElementById('ifsc_code').value,
+            tds_applicable: parseInt(document.getElementById('tds_applicable').value),
+            tds_rate: parseFloat(document.getElementById('tds_rate').value || 0),
+            tds_nature_of_payment: document.getElementById('tds_nature_of_payment').value,
+            remarks: document.getElementById('remarks').value
+        };
+
+        try {
+            const url = document.getElementById('vendor-id').value
+                ? `/api/admin/vendors/${document.getElementById('vendor-id').value}`
+                : '/api/admin/vendors';
+            const method = document.getElementById('vendor-id').value ? 'PUT' : 'POST';
+
+            const res = await authFetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+
+            if (res.ok) {
+                showToast("Vendor saved successfully", "success");
+                closeVendorModal();
+                vendorGrid.forceRender();
+            } else {
+                showToast(result.detail || result.message || "Failed to save vendor", "error");
+            }
+        } catch (err) {
+            showToast("Connection error", "error");
+        }
+    });
+
+    async function editVendor(vendorId) {
+        // Use dedicated endpoint for single vendor fetch (efficient)
+        try {
+            const res = await authFetch(`/api/admin/vendors/${vendorId}`);
+            if (!res.ok) {
+                showToast("Vendor not found", "error");
+                return;
+            }
+            const vendor = await res.json();
+
+            document.getElementById('modal-title').textContent = 'Edit Vendor';
+            document.getElementById('vendor-id').value = vendor.id;
+            document.getElementById('company_name').value = vendor.company_name;
+            document.getElementById('entity_type').value = vendor.entity_type || 'Company';
+            document.getElementById('contact_person').value = vendor.contact_person;
+            document.getElementById('email').value = vendor.email;
+            document.getElementById('mobile').value = vendor.mobile;
+            document.getElementById('pan').value = vendor.pan || '';
+            document.getElementById('gstin').value = vendor.gstin || '';
+            document.getElementById('bank_name').value = vendor.bank_name || '';
+            document.getElementById('bank_account_no').value = vendor.bank_account_no || '';
+            document.getElementById('ifsc_code').value = vendor.ifsc_code || '';
+
+            document.getElementById('tds_applicable').value = vendor.tds_applicable || 0;
+            document.getElementById('tds_rate').value = vendor.tds_rate || '';
+            document.getElementById('tds_nature_of_payment').value = vendor.tds_nature_of_payment || '';
+            document.getElementById('remarks').value = vendor.remarks || '';
+
+            toggleTdsField();
+            document.getElementById('vendor-modal').classList.remove('hidden');
+        } catch (e) {
+            showToast(e.detail || e.message || "Failed to fetch vendor details", "error");
+        }
+    }
+
+    async function viewVendorDocs(vendorId) {
+        const listDiv = document.getElementById('docs-list');
+        listDiv.innerHTML = '<p class="text-xs text-slate-500 italic">Loading documents...</p>';
+        document.getElementById('docs-modal').classList.remove('hidden');
+
+        try {
+            const res = await authFetch(`/api/admin/vendors/${vendorId}/documents`);
+            const data = await res.json();
+
+            if (data.success && data.documents.length > 0) {
+                listDiv.innerHTML = data.documents.map(doc => `
+                    <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-sky-500/30 transition-all group">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-slate-200">${doc.document_type || 'Form 16A'}</span>
+                                <span class="text-[10px] text-slate-500">${doc.financial_year} ${doc.quarter}</span>
+                            </div>
+                        </div>
+                        <a href="/api/tax-docs/download/${doc.id}" target="_blank" class="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline">View</a>
+                    </div>
+                `).join('');
+            } else {
+                listDiv.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-600">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                        </div>
+                        <p class="text-sm text-slate-400">No documents found for this vendor.</p>
+                    </div>
+                `;
+            }
+        } catch (err) {
+            listDiv.innerHTML = '<p class="text-sm text-rose-400 font-bold">Failed to load documents.</p>';
+        }
+    }
+    async function approveVendor(vendorId) {
+        const comment = prompt('Enter approval comment (required):');
+        if (comment === null) return; // User cancelled
+        if (!comment.trim()) {
+            showToast('Approval comment is required', 'error');
+            return;
+        }
+
+        try {
+            const res = await authFetch(`/api/admin/vendors/${vendorId}/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comment: comment })
+            });
+            const result = await res.json();
+
+            if (res.ok) {
+                showToast("Vendor approved successfully", "success");
+                vendorGrid.forceRender();
+            } else {
+                showToast(result.detail || result.message || "Failed to approve vendor", "error");
+            }
+        } catch (err) {
+            showToast("Connection error", "error");
+        }
+    }
+
+    async function inactivateVendor(vendorId) {
+        if (!confirm('Are you sure you want to mark this vendor as INACTIVE? The linked user account will also be deactivated.')) return;
+
+        try {
+            const res = await authFetch(`/api/admin/vendors/${vendorId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const result = await res.json();
+
+            if (res.ok) {
+                showToast("Vendor deleted successfully", "success");
+                vendorGrid.forceRender();
+            } else {
+                showToast(result.detail || result.message || "Failed to delete vendor", "error");
+            }
+        } catch (err) {
+            showToast("Connection error", "error");
+        }
+    }
+
+    function copyInviteLink() {
+        const link = window.location.origin + '/register';
+        navigator.clipboard.writeText(link).then(() => {
+            showToast("Invite link copied to clipboard!", "success");
+        }, () => {
+            showToast("Failed to copy link", "error");
+        });
+    }
+
+    // Tax Doc Upload Logic
+    function openUploadTaxModal(vendorId) {
+        document.getElementById('tax_vendor_id').value = vendorId;
+        document.getElementById('upload-tax-modal').classList.remove('hidden');
+    }
+
+    function closeUploadTaxModal() {
+        document.getElementById('upload-tax-modal').classList.add('hidden');
+        document.getElementById('upload-tax-form').reset();
+    }
+
+    document.getElementById('upload-tax-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.textContent;
+        btn.textContent = 'Uploading...';
+        btn.disabled = true;
+
+        const vendorId = document.getElementById('tax_vendor_id').value;
+        const year = document.getElementById('tax_year').value;
+        const quarter = document.getElementById('tax_quarter').value;
+        const taxType = document.getElementById('tax_type').value;
+        const remarks = document.getElementById('tax_remarks').value;
+        const file = document.getElementById('tax_file').files[0];
+
+        if (!file) {
+            showToast("Please select a file", "error");
+            btn.textContent = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('vendor_id', vendorId);
+        formData.append('financial_year', year);
+        formData.append('quarter', quarter);
+        formData.append('document_type', taxType);
+        formData.append('remarks', remarks);
+        formData.append('file', file);
+
+        try {
+            const res = await authFetch('/api/tax-docs/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await res.json();
+            if (res.ok) {
+                showToast("Form 16A uploaded successfully", "success");
+                closeUploadTaxModal();
+            } else {
+                showToast(result.detail || "Upload failed", "error");
+            }
+        } catch (e) {
+            showToast(e.detail || e.message || "Upload failed", "error");
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+
+
+    // SECURITY: Only superadmin and admin can add vendors
+    document.addEventListener('DOMContentLoaded', () => {
+        const role = localStorage.getItem('user_role');
+        if (role !== 'superadmin' && role !== 'admin') {
+            document.querySelector('button[onclick="openAddVendorModal()"]')?.remove();
+        }
+    });
+</script>
+{% endblock %}
