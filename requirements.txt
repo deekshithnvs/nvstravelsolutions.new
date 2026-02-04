@@ -12,4 +12,5 @@ psycopg2-binary
 motor
 python-dotenv
 httpx
+gunicorn
 
