@@ -1,8 +1,11 @@
-# Render.com Deployment Configuration
-# This file tells Render.com how to build and run your FastAPI application
-
-# Build command - install dependencies
-buildCommand = "pip install -r requirements.txt"
-
-# Start command - run the FastAPI app with uvicorn
-startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+services:
+  - type: web
+    name: nvstravelsolutions-new
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        value: sqlite:///./nvs_portal.db
