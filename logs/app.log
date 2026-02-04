@@ -1,0 +1,177 @@
+2026-02-04 11:43:45,466 | ERROR | NVS_Portal | [/api/invoices/data] Function.__init__() got an unexpected keyword argument 'else_'
+2026-02-04 11:43:45,614 | ERROR | NVS_Portal | [/api/invoices/data] Traceback:
+Traceback (most recent call last):
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 243, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "d:\Asmitha\OneDrive\Nithin\Learning\Antigravity\Vendor management portal\backend-services\routers\invoices.py", line 84, in list_my_invoices
+    func.case(
+    ~~~~~~~~~^
+        (func.coalesce(Invoice.tax_amount, 0) == 0,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         func.coalesce(Invoice.cgst, 0) + func.coalesce(Invoice.sgst, 0) + func.coalesce(Invoice.igst, 0)),
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        else_=0
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\sql\functions.py", line 995, in __call__
+    return Function(
+        self.__names[-1], packagenames=tuple(self.__names[0:-1]), *c, **o
+    )
+TypeError: Function.__init__() got an unexpected keyword argument 'else_'
+
+2026-02-04 11:44:31,710 | ERROR | NVS_Portal | [/api/invoices/data] Function.__init__() got an unexpected keyword argument 'else_'
+2026-02-04 11:44:31,725 | ERROR | NVS_Portal | [/api/invoices/data] Traceback:
+Traceback (most recent call last):
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 243, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "d:\Asmitha\OneDrive\Nithin\Learning\Antigravity\Vendor management portal\backend-services\routers\invoices.py", line 84, in list_my_invoices
+    func.case(
+    ~~~~~~~~~^
+        [(func.coalesce(Invoice.tax_amount, 0) == 0,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         func.coalesce(Invoice.cgst, 0) + func.coalesce(Invoice.sgst, 0) + func.coalesce(Invoice.igst, 0))],
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        else_=0
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\sql\functions.py", line 995, in __call__
+    return Function(
+        self.__names[-1], packagenames=tuple(self.__names[0:-1]), *c, **o
+    )
+TypeError: Function.__init__() got an unexpected keyword argument 'else_'
+
+2026-02-04 11:45:19,019 | ERROR | NVS_Portal | [/api/invoices/data] The "whens" argument to case(), when referring to a sequence of items, is now passed as a series of positional elements, rather than as a list. 
+2026-02-04 11:45:19,112 | ERROR | NVS_Portal | [/api/invoices/data] Traceback:
+Traceback (most recent call last):
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 115, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 101, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 355, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\fastapi\routing.py", line 243, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "d:\Asmitha\OneDrive\Nithin\Learning\Antigravity\Vendor management portal\backend-services\routers\invoices.py", line 84, in list_my_invoices
+    case(
+    ~~~~^
+        [(func.coalesce(Invoice.tax_amount, 0) == 0,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         func.coalesce(Invoice.cgst, 0) + func.coalesce(Invoice.sgst, 0) + func.coalesce(Invoice.igst, 0))],
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        else_=0
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\sql\_elements_constructors.py", line 853, in case
+    return Case(*whens, value=value, else_=else_)
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\sql\elements.py", line 3349, in __init__
+    new_whens: Iterable[Any] = coercions._expression_collection_was_a_list(
+                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        "whens", "case", whens
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\NVS\AppData\Local\Programs\Python\Python314\Lib\site-packages\sqlalchemy\sql\coercions.py", line 152, in _expression_collection_was_a_list
+    raise exc.ArgumentError(
+    ...<4 lines>...
+    )
+sqlalchemy.exc.ArgumentError: The "whens" argument to case(), when referring to a sequence of items, is now passed as a series of positional elements, rather than as a list. 
+
