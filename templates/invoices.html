@@ -1,0 +1,1337 @@
+{% extends "base.html" %}
+
+{% block title %}My Invoices | NVS Vendor Portal{% endblock %}
+
+{% block content %}
+<div class="space-y-8 animate-in fade-in duration-700">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold">Invoice <span class="gradient-text">Management</span></h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-2">Upload, track, and manage your
+                billing history.</p>
+        </div>
+        <button onclick="document.getElementById('upload-modal').classList.remove('hidden')"
+            class="btn-primary px-6 py-3 rounded-xl font-bold flex items-center space-x-2 transition-all duration-300 shadow-lg shadow-teal-500/20 hover:scale-105">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span>New Upload</span>
+        </button>
+    </div>
+
+    <!-- Filters & Export Buttons -->
+    <div class="glass p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-4 w-full md:w-auto">
+            <div class="relative w-full md:w-64">
+                <input type="text" id="search-input" placeholder="Search Invoice #"
+                    class="w-full bg-slate-100 dark:bg-slate-800 border border-white/10 rounded-lg px-4 py-2 pl-10 text-sm focus:outline-none focus:border-sky-500">
+                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap justify-end w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+            <!-- Vendor Filter -->
+            <input type="text" id="vendor-filter" placeholder="Search Vendor..."
+                class="bg-slate-100 dark:bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-sky-500 w-32 md:w-40">
+
+            <select id="status-filter"
+                class="bg-slate-100 dark:bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-teal-500 min-w-[120px]">
+                <option value="">All Statuses</option>
+                <option value="Paid">Paid</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Pending Clarification">Clarification Needed</option>
+                <option value="Hold">On Hold</option>
+                <option value="Rejected">Rejected</option>
+            </select>
+
+            <!-- Date Range -->
+            <div class="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800 border border-white/10 rounded-lg p-1">
+                 <input type="date" id="filter-start-date" class="bg-transparent border-none text-xs focus:ring-0 p-1 text-slate-700 dark:text-slate-300 focus:outline-none">
+                 <span class="text-slate-400 font-bold">-</span>
+                 <input type="date" id="filter-end-date" class="bg-transparent border-none text-xs focus:ring-0 p-1 text-slate-700 dark:text-slate-300 focus:outline-none">
+            </div>
+
+            <button onclick="updateGrid()"
+                class="bg-sky-500/10 text-sky-500 hover:bg-sky-500 hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors">
+                Filter
+            </button>
+
+            <!-- CSV Export (Admin Only) -->
+            <button onclick="downloadCsvReport()" id="admin-export-csv"
+                class="hidden glass px-4 py-2 rounded-lg font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center space-x-2 text-sky-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                <span>Export CSV</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Invoice Totals Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="glass p-6 rounded-2xl relative overflow-hidden group border border-white/10 shadow-lg">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-16 h-16 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">Total Invoiced Amount</p>
+            <h3 class="text-3xl font-bold font-head tracking-tight text-slate-800 dark:text-white" id="summary-total-amount">₹0.00</h3>
+            <p class="text-[10px] text-slate-400 mt-2 font-medium">Gross value of current selection</p>
+        </div>
+        <div class="glass p-6 rounded-2xl relative overflow-hidden group border border-teal-500/30 shadow-lg shadow-teal-500/5">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-16 h-16 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+            </div>
+            <p class="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-[0.2em] mb-1">Total GST (Incl. IGST)</p>
+            <h3 class="text-3xl font-bold font-head tracking-tight text-teal-600 dark:text-teal-400" id="summary-total-tax">₹0.00</h3>
+            <p class="text-[10px] text-slate-400 mt-2 font-medium">Consolidated tax component</p>
+        </div>
+    </div>
+
+    <!-- Grid.js Container -->
+    <div id="wrapper" class="glass rounded-3xl overflow-hidden p-6 dark:bg-slate-900/40"></div>
+
+    <script>
+        // ============ SECURITY: Auth Wrapper ============
+        function authFetch(url, options = {}) {
+            const token = localStorage.getItem('auth_token');
+            return fetch(url, {
+                ...options,
+                headers: {
+                    ...(options.headers || {}),
+                    'Authorization': token || ''
+                }
+            });
+        }
+
+        // Initialize Grid with Client-Side Pagination
+        let gridData = [];
+
+        async function fetchInvoices(status = '', search = '', start = '', end = '', vendor = '') {
+             const params = new URLSearchParams();
+             params.append('limit', '1000'); // Fetch all for client-side handling
+             params.append('page', '1');
+             if (status) params.append('status', status);
+             if (search) params.append('search', search);
+             if (start) params.append('start_date', start);
+             if (end) params.append('end_date', end);
+             if (vendor) params.append('vendor_search', vendor);
+             
+             try {
+                const res = await authFetch(`/api/invoices/data?${params.toString()}`);
+                const data = await res.json();
+                
+                // Update Totals (Global)
+                const amtEl = document.getElementById('summary-total-amount');
+                const taxEl = document.getElementById('summary-total-tax');
+                if (amtEl) {
+                    const total_amt = parseFloat(data.total_amount || 0);
+                    amtEl.textContent = `₹${total_amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+                if (taxEl) {
+                    const total_tax = parseFloat(data.total_tax || 0);
+                    taxEl.textContent = `₹${total_tax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+
+                return data.items.map(inv => [
+                    inv.vendor_name, 
+                    inv.invoice_no, 
+                    inv.date, 
+                    inv.base_amount, 
+                    inv.tax, 
+                    inv.amount, 
+                    inv.status, 
+                    inv.id, 
+                    inv.id
+                ]);
+
+             } catch(err) {
+                 console.error("Failed to fetch invoices", err);
+                 return [];
+             }
+        }
+
+        const grid = new gridjs.Grid({
+            columns: [
+                "Vendor",
+                "Invoice #", 
+                "Date", 
+                {
+                    name: "Base Amount",
+                    formatter: (cell) => gridjs.html(`<span class="font-mono text-slate-600 dark:text-slate-300 text-xs">${cell}</span>`)
+                },
+                {
+                    name: "Tax (GST)", 
+                    formatter: (cell) => {
+                        return gridjs.html(`<span class="font-mono text-slate-600 dark:text-slate-300 text-xs">${cell}</span>`)
+                    }
+                },
+                {
+                    name: "Invoice Value",
+                    formatter: (cell) => gridjs.html(`<span class="font-bold text-slate-800 dark:text-slate-200 text-xs">${cell}</span>`)
+                },
+                {
+                name: "Status",
+                formatter: (cell) => {
+                    const s = (cell || '').toLowerCase();
+                    let cls = 'bg-slate-100 text-slate-600'; // Default
+                    if (s.includes('paid')) cls = 'bg-[#22C55E]/20 text-[#22C55E]';
+                    if (s.includes('approved')) cls = 'bg-[#10B981]/20 text-[#10B981]';
+                    if (s.includes('rejected')) cls = 'bg-[#EF4444]/20 text-[#EF4444]';
+                    if (s.includes('review')) cls = 'bg-[#38BDF8]/20 text-[#38BDF8]';
+                    if (s.includes('pending') || s.includes('clarification')) cls = 'bg-[#F59E0B]/20 text-[#F59E0B]';
+                    if (s.includes('hold')) cls = 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+                    return gridjs.html(`<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${cls}">${cell}</span>`);
+                }
+            }, {
+                    name: 'id',
+                    hidden: true
+                }, {
+                    name: 'Actions',
+                    formatter: (cell) => gridjs.html(`<button onclick="openInvoiceDetails(${cell})" class="text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 font-bold text-xs">View Details</button>`)
+                }],
+            data: () => fetchInvoices(),
+            search: true, 
+            sort: true,
+            pagination: {
+                limit: 10
+            },
+            className: {
+                td: 'text-slate-700 dark:text-slate-200 text-sm py-3 border-b border-slate-200 dark:border-white/5',
+                th: 'text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/5',
+                table: 'w-full'
+            },
+            style: {
+                table: { 'background-color': 'transparent' },
+                th: { 'background-color': 'transparent' },
+                td: { 'background-color': 'transparent' }
+            }
+        }).render(document.getElementById("wrapper"));
+
+        // Filter Logic
+        window.debounceTimer = null;
+        
+        // Global Update Function
+        window.updateGrid = async function() {
+            const status = document.getElementById('status-filter').value;
+            const search = document.getElementById('search-input').value;
+            const start = document.getElementById('filter-start-date').value;
+            const end = document.getElementById('filter-end-date').value;
+            const vendor = document.getElementById('vendor-filter').value;
+
+            if (start && end && start > end) {
+                if(typeof showToast === 'function') showToast("Start Date cannot be after End Date", "error");
+                else alert("Start Date cannot be after End Date");
+                return;
+            }
+            
+            // Server-side filter, client-side pagination (fetchInvoices handles it)
+            const newData = await fetchInvoices(status, search, start, end, vendor);
+            
+            grid.updateConfig({
+                data: newData
+            }).forceRender();
+        }
+
+        // Attach listeners where appropriate
+        // Status filter change can trigger update or user clicks Filter button
+        // Let's allow Status change to trigger it for better UX
+        document.getElementById('status-filter').addEventListener('change', updateGrid);
+
+        // Search Debounce
+        document.getElementById('search-input').addEventListener('input', () => {
+            clearTimeout(window.debounceTimer);
+            window.debounceTimer = setTimeout(updateGrid, 500);
+        });
+
+        // Vendor Search Debounce
+        document.getElementById('vendor-filter').addEventListener('input', () => {
+             clearTimeout(window.debounceTimer);
+             window.debounceTimer = setTimeout(updateGrid, 500);
+        });
+
+        async function downloadCsvReport() {
+            try {
+                const res = await authFetch('/api/reports/invoices-csv');
+                if (!res.ok) throw new Error("Failed to generate report");
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Invoices_Report_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                if (typeof showToast === 'function') showToast("Report downloaded successfully", "success");
+            } catch (err) {
+                if (typeof showToast === 'function') showToast(err.message || "Failed to generate report", "error");
+                else alert(err.message || "Failed to generate report");
+            }
+        }
+    </script>
+</div>
+
+<!-- Invoice Detail Modal -->
+<div id="detail-modal"
+    class="hidden fixed inset-0 z-[110] flex items-center justify-center p-6 bg-white dark:bg-slate-950/80 backdrop-blur-sm"
+    onclick="if(event.target === this) this.classList.add('hidden')">
+    <div class="glass w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center gradient-bg">
+            <div>
+                <h3 class="font-bold text-lg" id="detail-invoice-no">Invoice Details</h3>
+                <p class="text-xs text-white/60" id="detail-vendor-date">Vendor Name • Date</p>
+            </div>
+            <button onclick="document.getElementById('detail-modal').classList.add('hidden')"
+                class="text-slate-900 hover:text-black bg-white/30 hover:bg-white/50 rounded-full p-1 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-8 grid grid-cols-1 md:grid-cols-3 gap-8 max-h-[70vh] overflow-y-auto">
+            <!-- Left: Info -->
+            <div class="md:col-span-1 space-y-6">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total
+                        Amount</p>
+                    <h4 class="text-3xl font-bold text-slate-900 dark:text-white mt-1" id="detail-amount">₹0.00</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400" id="detail-tax">Incl.
+                        ₹0.00 GST</p>
+                </div>
+
+                <!-- Two Column Layout for Breakdown and Payment -->
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- Breakdown Section -->
+                    <div class="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-3">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Financial Breakdown
+                        </p>
+                        <div class="grid grid-cols-2 gap-y-2 text-xs">
+                            <span class="text-slate-400">Taxable:</span>
+                            <span class="text-right font-medium" id="detail-taxable">₹0.00</span>
+                            <span class="text-slate-400">Non-Taxable:</span>
+                            <span class="text-right font-medium" id="detail-non-taxable">₹0.00</span>
+                            <span class="text-slate-400">Discount:</span>
+                            <span class="text-right font-medium text-rose-400" id="detail-discount">-₹0.00</span>
+                            <div class="col-span-2 border-t border-white/5 my-1"></div>
+                            <span class="text-slate-400">CGST:</span>
+                            <span class="text-right" id="detail-cgst">₹0.00</span>
+                            <span class="text-slate-400">SGST:</span>
+                            <span class="text-right" id="detail-sgst">₹0.00</span>
+                            <span class="text-slate-400">IGST:</span>
+                            <span class="text-right" id="detail-igst">₹0.00</span>
+                            <div class="col-span-2 border-t border-white/5 my-1"></div>
+                            <span class="text-[#0E7C7B] dark:text-[#3DD9CB] font-bold">TDS Applicable:</span>
+                            <span class="text-right font-bold text-rose-400" id="detail-tds-applicable">₹0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Info Box -->
+                    <div id="payment-info-box"
+                        class="hidden p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                        <div class="flex items-center justify-between mb-2">
+                            <label
+                                class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Payment
+                                Processed</label>
+                            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-xs text-slate-700 dark:text-slate-300 font-medium">Ref: <span
+                                    id="detail-pay-ref" class="font-bold text-slate-900 dark:text-white"></span></p>
+                            <p class="text-xs text-slate-700 dark:text-slate-300 font-medium">Date: <span
+                                    id="detail-pay-date" class="font-bold text-slate-900 dark:text-white"></span></p>
+                            <p class="text-xs text-slate-700 dark:text-slate-300 font-medium">Paid: <span
+                                    id="detail-paid-amount" class="font-bold text-emerald-500"></span></p>
+                            <p class="text-xs text-slate-700 dark:text-slate-300 font-medium hidden" id="detail-tds-wrapper">TDS: <span
+                                    id="detail-tds-amount" class="font-bold text-rose-500"></span></p>
+                            <p class="text-[10px] text-slate-600 dark:text-slate-400 mt-1 italic font-medium"
+                                id="detail-pay-remarks">
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Workflow Status</p>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 rounded-full bg-amber-500" id="detail-status-dot"></div>
+                        <span class="text-sm font-medium" id="detail-status">Pending</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Line Items -->
+            <div class="md:col-span-2">
+                <div id="detail-line-items-wrapper" class="hidden">
+                    <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">
+                        Line Items</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="text-slate-500 dark:text-slate-400 border-b border-white/5">
+                                    <th class="py-2 font-medium">Description</th>
+                                    <th class="py-2 font-medium text-right">Qty</th>
+                                    <th class="py-2 font-medium text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-line-items" class="text-slate-600 dark:text-slate-300">
+                                <!-- Dynamic -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Admin Actions -->
+                <div id="admin-detail-actions" class="mt-4 grid grid-cols-2 gap-3 hidden">
+                    <button id="detail-approve-btn"
+                        class="bg-[#10B981] py-3 rounded-xl font-bold text-sm text-white hover:opacity-90">Approve</button>
+                    <button id="detail-paid-btn"
+                        class="bg-[#22C55E] py-3 rounded-xl font-bold text-sm text-white hidden hover:opacity-90">Mark
+                        as Paid</button>
+                    <button id="detail-reject-btn"
+                        class="bg-[#EF4444] py-3 rounded-xl font-bold text-sm text-white hover:opacity-90">Reject</button>
+                    <button id="detail-review-btn"
+                        class="bg-[#38BDF8] text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-sky-600/20">Review</button>
+                    <button id="detail-clarification-btn"
+                        class="bg-[#F59E0B] text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-amber-600/20">Clarify</button>
+                    <button id="detail-hold-btn"
+                        class="bg-slate-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-500 transition-colors shadow-lg shadow-slate-600/20">Hold</button>
+                </div>
+
+                <!-- View Original File Button at Bottom -->
+                <div class="mt-4">
+                    <a id="detail-view-file" href="javascript:void(0)"
+                        class="block w-full glass py-3 rounded-xl font-bold text-center text-sm hover:bg-white/5 transition-colors">View
+                        Original File</a>
+                    <button id="detail-export-excel"
+                        class="hidden w-full mt-3 glass py-3 rounded-xl font-bold text-center text-sm border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors">Export
+                        Excel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pay Modal (Admin Action) -->
+<div id="pay-modal"
+    class="hidden fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm"
+    onclick="if(event.target === this) this.classList.add('hidden')">
+    <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl p-8 shadow-2xl">
+        <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Process Payment</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">Enter payment reference details to mark this invoice as <span class="text-emerald-500 dark:text-emerald-400 font-semibold">PAID</span>.</p>
+        <input type="hidden" id="pay-invoice-no">
+
+        <div class="space-y-4">
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Payment Date</label>
+                <input type="date" id="pay-date"
+                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 transition-all">
+            </div>
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Payment Reference (UTR / Cheque)</label>
+                <input type="text" id="pay-ref" placeholder="e.g., UTR-123456789"
+                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 transition-all">
+            </div>
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">TDS Amount (₹)</label>
+                <input type="number" step="0.01" id="pay-tds" placeholder="0.00"
+                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 transition-all">
+            </div>
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Paid Amount (₹)</label>
+                <input type="number" id="pay-amount" step="0.01" min="0" placeholder="0.00" required
+                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 transition-all">
+                <p class="text-xs text-slate-500 dark:text-slate-400">Actual amount paid (Invoice Amount - TDS - Other Deductions)</p>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Remarks</label>
+                <textarea id="pay-remarks" rows="2" placeholder="Optional remarks..."
+                    class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 resize-none transition-all"></textarea>
+            </div>
+        </div>
+
+        <div class="flex space-x-3 mt-8">
+            <button onclick="document.getElementById('pay-modal').classList.add('hidden')"
+                class="flex-1 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 py-3 rounded-xl font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">Cancel</button>
+            <button onclick="confirmPay()"
+                class="flex-1 btn-primary py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all">Confirm Payment</button>
+        </div>
+    </div>
+</div>
+<!-- Upload Modal -->
+<div id="upload-modal"
+    class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-white dark:bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200"
+    onclick="if(event.target === this) this.classList.add('hidden')">
+    <div class="glass w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center gradient-bg">
+            <h3 class="font-bold text-lg">Upload New Invoice</h3>
+            <button onclick="document.getElementById('upload-modal').classList.add('hidden')"
+                class="text-slate-900 hover:text-black bg-white/30 hover:bg-white/50 rounded-full p-1 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+        <form id="upload-form" class="p-8 space-y-6">
+            <!-- Admin: Vendor Selection -->
+            <div id="admin-vendor-container" class="space-y-1 hidden">
+                <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">Select
+                    Vendor</label>
+                <select id="upload-vendor-id" name="manual_vendor_id"
+                    class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-900 dark:text-white font-medium">
+                    <option value="" class="bg-slate-50 dark:bg-slate-900">Choose a vendor...</option>
+                </select>
+            </div>
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Dropzone Area -->
+                <div class="flex-1 border-2 border-dashed border-white/10 rounded-2xl p-8 text-center hover:border-sky-500/50 transition-colors group cursor-pointer h-full flex flex-col justify-center"
+                    onclick="document.getElementById('file-input').click()">
+                    <input type="file" id="file-input" name="file" class="hidden" onchange="handleFileSelect(this)"
+                        required>
+                    <div
+                        class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-sky-500/20 transition-colors">
+                        <svg class="w-8 h-8 text-slate-600 dark:text-slate-300 group-hover:text-sky-400" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                            </path>
+                        </svg>
+                    </div>
+                    <p class="text-sm font-medium" id="file-name">Click to browse or drag & drop</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2" id="file-status">Support PDF, JPG, PNG
+                        (Max 5MB)</p>
+                    <!-- Upload Progress Bar -->
+                    <div id="upload-progress-container" class="hidden mt-4">
+                        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                            <div id="upload-progress-bar" class="bg-sky-500 h-2.5 rounded-full transition-all duration-300"
+                                style="width: 0%"></div>
+                        </div>
+                        <p class="text-xs text-sky-500 mt-2" id="upload-progress-text">Uploading... 0%</p>
+                    </div>
+                </div>
+
+                <!-- Basic Fields -->
+                <div class="flex-1 space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">Document Type</label>
+                        <select name="manual_document_type" id="manual_document_type"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200">
+                            <option value="invoice">Invoice</option>
+                            <option value="credit_note">Credit Note</option>
+                            <option value="debit_note">Debit Note</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1" id="invoice_number_container">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">Invoice Number</label>
+                            <input type="text" name="manual_invoice_no" placeholder="Enter Invoice No"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200">
+                        </div>
+                        <div class="space-y-1 hidden" id="note_number_field">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1" id="note_number_label">Note Number</label>
+                            <input type="text" name="manual_note_number" id="manual_note_number" placeholder="Enter Note No"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">Invoice Date</label>
+                            <div class="relative">
+                                <input type="text" name="manual_date" id="manual_date" placeholder="DD-MM-YYYY"
+                                    pattern="\d{2}-\d{2}-\d{4}" maxlength="10"
+                                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 pr-10 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200 placeholder:uppercase">
+                                <input type="date" id="manual_date_picker" class="absolute opacity-0 pointer-events-none">
+                                <button type="button" onclick="document.getElementById('manual_date_picker').showPicker()"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-sky-500">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                        </path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">Category</label>
+                        <select name="manual_category"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200">
+                            <option value="General">General</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Software">Software</option>
+                            <option value="Assets">Assets</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Services">Services</option>
+                            <option value="Office Supplies">Office Supplies</option>
+                            <option value="Marketing">Marketing</option>
+                            <option value="Rent">Rent</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Consulting">Consulting</option>
+                            <option value="Fuel">Fuel</option>
+                            <option value="Entertainment">Entertainment</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">Description / Notes</label>
+                <textarea name="manual_description" placeholder="Optional description..." rows="2"
+                    class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-white/5">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">Taxable Value (₹)</label>
+                    <input type="number" step="0.01" name="manual_taxable_value" id="manual_taxable_value" placeholder="0.00"
+                        class="calc-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">Non-Taxable (₹)</label>
+                    <input type="number" step="0.01" name="manual_non_taxable_value" id="manual_non_taxable_value" placeholder="0.00"
+                        class="calc-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">Discount (₹)</label>
+                    <input type="number" step="0.01" name="manual_discount" id="manual_discount" placeholder="0.00"
+                        class="calc-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">CGST (₹)</label>
+                    <input type="number" step="0.01" name="manual_cgst" id="manual_cgst" placeholder="0.00"
+                        class="calc-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">SGST (₹)</label>
+                    <input type="number" step="0.01" name="manual_sgst" id="manual_sgst" placeholder="0.00" readonly
+                        class="calc-input w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200 opacity-70">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">IGST (₹)</label>
+                    <input type="number" step="0.01" name="manual_igst" id="manual_igst" placeholder="0.00"
+                        class="calc-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 focus:border-sky-500 outline-none text-slate-700 dark:text-slate-200">
+                </div>
+                <div class="space-y-1 md:col-span-2">
+                    <label class="text-sm font-bold text-sky-500 dark:text-sky-400 uppercase ml-1">Total Amount (₹)</label>
+                    <input type="number" step="0.01" name="manual_amount" id="manual_total_amount" placeholder="0.00" readonly
+                        class="w-full bg-sky-500/10 dark:bg-sky-500/20 border border-sky-500/30 rounded-xl px-4 py-3 focus:border-sky-500 outline-none text-sky-600 dark:text-sky-400 font-bold text-lg">
+                </div>
+            </div>
+
+            <div class="flex space-x-4">
+                <button type="button" onclick="document.getElementById('upload-modal').classList.add('hidden')"
+                    class="flex-1 glass py-4 rounded-xl font-bold hover:bg-slate-100 dark:bg-slate-800 transition-colors">Cancel</button>
+                <button type="submit" class="flex-1 btn-primary py-4 rounded-xl font-bold transition-all shadow-lg shadow-teal-500/20">Submit Invoice</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Handle File Selection - Show file name and progress bar
+    function handleFileSelect(input) {
+        if (!input.files.length) return;
+
+        const file = input.files[0];
+        const fileName = file.name;
+
+        // Update file name display
+        document.getElementById('file-name').textContent = fileName;
+
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('File too large. Maximum 5MB allowed.', 'error');
+            input.value = '';
+            document.getElementById('file-name').textContent = 'Click to browse or drag & drop';
+            return;
+        }
+
+        // Just show file is ready
+        document.getElementById('file-status').textContent = `${fileName} ready to upload`;
+        document.getElementById('file-status').classList.add('text-green-500');
+    }
+
+    // Handle Invoice Upload with Progress
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.textContent;
+        btn.textContent = 'Submitting...';
+        btn.disabled = true;
+
+        // Show progress toast
+        dismissAllToasts();
+        showToast('Submitting invoice... Please wait', 'info');
+
+        const fileInput = document.getElementById('file-input');
+        if (!fileInput.files.length) {
+            showToast('Please select a file to upload', 'error');
+            btn.textContent = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        const formData = new FormData(e.target); // Get all form data
+        formData.append('file', fileInput.files[0]); // Ensure the file is explicitly added
+
+        // Add manual_tax if it exists (it's not in the form, but was in the old invoiceData)
+        // Assuming manual_tax is no longer needed or derived from other fields
+        // If it's still needed, it should be added to the form or calculated.
+        // For now, omitting as it's not in the provided form fields.
+
+        // Show progress bar
+        const progressContainer = document.getElementById('upload-progress-container');
+        const progressBar = document.getElementById('upload-progress-bar');
+        const progressText = document.getElementById('upload-progress-text');
+        const fileStatus = document.getElementById('file-status');
+
+        progressContainer.classList.remove('hidden');
+        fileStatus.classList.add('hidden');
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading... 0%';
+        progressText.classList.remove('text-green-500');
+        progressText.classList.add('text-sky-500');
+
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100);
+                progressBar.style.width = `${percentComplete}%`;
+                progressText.textContent = `Uploading... ${percentComplete}%`;
+            }
+        });
+
+        xhr.addEventListener('load', async () => {
+            try {
+                const result = JSON.parse(xhr.responseText);
+
+                if (xhr.status === 200 && result.success) {
+                    dismissAllToasts();
+                    showToast('Invoice submitted successfully!', 'success');
+                    document.getElementById('upload-modal').classList.add('hidden');
+                    e.target.reset();
+                    document.getElementById('file-name').textContent = 'Click to browse or drag & drop';
+                    document.getElementById('upload-progress-container').classList.add('hidden');
+                    document.getElementById('file-status').classList.remove('hidden');
+                    document.getElementById('file-status').textContent = 'Support PDF, JPG, PNG (Max 5MB)';
+                    document.getElementById('file-status').classList.remove('text-green-500');
+                    if (typeof grid !== 'undefined') grid.forceRender();
+                } else {
+                    dismissAllToasts();
+                    const errorMessage = result.detail || result.message || 'Submission failed';
+                    showToast(errorMessage, 'error');
+                    progressContainer.classList.add('hidden');
+                    fileStatus.classList.remove('hidden');
+                    fileStatus.textContent = 'Support PDF, JPG, PNG (Max 5MB)';
+                    fileStatus.classList.remove('text-green-500');
+                }
+            } catch (err) {
+                console.error('Submission error:', err);
+                showToast(`Error processing response: ${err.message}`, 'error');
+                progressContainer.classList.add('hidden');
+                fileStatus.classList.remove('hidden');
+                fileStatus.textContent = 'Support PDF, JPG, PNG (Max 5MB)';
+                fileStatus.classList.remove('text-green-500');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        xhr.addEventListener('error', () => {
+            console.error('Network error during upload');
+            dismissAllToasts();
+            showToast('Network error during upload', 'error');
+            progressContainer.classList.add('hidden');
+            fileStatus.classList.remove('hidden');
+            fileStatus.textContent = 'Support PDF, JPG, PNG (Max 5MB)';
+            fileStatus.classList.remove('text-green-500');
+            btn.textContent = originalText;
+            btn.disabled = false;
+        });
+
+        xhr.open('POST', '/api/invoices/upload');
+        xhr.setRequestHeader('Authorization', localStorage.getItem('auth_token') || '');
+        xhr.send(formData);
+    });
+
+
+    async function viewOriginalFile(invoiceId) {
+        try {
+            const res = await authFetch(`/api/invoices/view-original?invoice_id=${invoiceId}`);
+            if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || "Failed to load file");
+            }
+            
+            // Get filename from header or default
+            const contentDisposition = res.headers.get('Content-Disposition');
+            let filename = 'invoice_file';
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (match && match[1]) filename = match[1];
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            
+            // open in new tab
+            const win = window.open(url, '_blank');
+            if (!win) {
+                showToast("Please allow popups to view the file", "warning");
+            }
+        } catch (err) {
+            showToast(err.message, "error");
+        }
+    }
+
+    // Detail Modal Logic
+    async function openInvoiceDetails(invoiceId) {
+        try {
+            if (!invoiceId) {
+                showToast('Invalid Invoice ID', 'error');
+                return;
+            }
+
+            const response = await authFetch(`/api/invoices/detail?invoice_id=${invoiceId}`);
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || `Server error: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Set basic info
+            document.getElementById('detail-invoice-no').textContent = data.invoice_no || 'N/A';
+            document.getElementById('detail-vendor-date').textContent = `${data.vendor_name || 'Unknown'} • ${data.date || 'N/A'}`;
+
+            const amount = typeof data.amount === 'number' ? data.amount : 0;
+            const tax = typeof data.tax_amount === 'number' ? data.tax_amount : 0;
+
+            document.getElementById('detail-amount').textContent = `₹${amount.toLocaleString()}`;
+            document.getElementById('detail-tax').textContent = `Incl. ₹${tax.toLocaleString()} GST`;
+
+            // Set detailed breakdown
+            document.getElementById('detail-taxable').textContent = `₹${(data.taxable_value || 0).toLocaleString()}`;
+            document.getElementById('detail-non-taxable').textContent = `₹${(data.non_taxable_value || 0).toLocaleString()}`;
+            document.getElementById('detail-discount').textContent = `-₹${(data.discount || 0).toLocaleString()}`;
+            document.getElementById('detail-cgst').textContent = `₹${(data.cgst || 0).toLocaleString()}`;
+            document.getElementById('detail-sgst').textContent = `₹${(data.sgst || 0).toLocaleString()}`;
+            document.getElementById('detail-igst').textContent = `₹${(data.igst || 0).toLocaleString()}`;
+            
+            // Calculate and set TDS preview
+            let tdsPreview = 0;
+            if (data.tds_amount && data.tds_amount > 0) {
+                tdsPreview = data.tds_amount;
+            } else if (data.tds_rate && data.tds_rate > 0) {
+                tdsPreview = (amount * data.tds_rate) / 100;
+            }
+            document.getElementById('detail-tds-applicable').textContent = `-₹${tdsPreview.toLocaleString()}`;
+            // Confidence removed
+
+            // Set status
+            const rawStatus = (data.status || 'pending').trim().toLowerCase();
+            document.getElementById('detail-status').textContent = rawStatus.replace(/_/g, ' ').toUpperCase();
+            const dot = document.getElementById('detail-status-dot');
+
+            let dotCls = 'bg-amber-500';
+            if (rawStatus.includes('paid') || rawStatus.includes('approved')) dotCls = 'bg-emerald-500';
+            if (rawStatus.includes('rejected')) dotCls = 'bg-rose-500';
+            if (rawStatus.includes('review')) dotCls = 'bg-sky-500';
+            if (rawStatus.includes('clarification')) dotCls = 'bg-amber-500';
+            if (rawStatus.includes('hold')) dotCls = 'bg-slate-500';
+
+            dot.className = `w-2 h-2 rounded-full ${dotCls}`;
+
+            // Payment Info Logic
+            const payBox = document.getElementById('payment-info-box');
+            if (data.payment_reference) {
+                payBox.classList.remove('hidden');
+                document.getElementById('detail-pay-ref').textContent = data.payment_reference;
+                document.getElementById('detail-pay-date').textContent = data.payment_date;
+                document.getElementById('detail-pay-remarks').textContent = data.payment_remarks || '';
+                
+                // Paid & TDS
+                document.getElementById('detail-paid-amount').textContent = '₹' + (data.paid_amount || data.amount || 0).toLocaleString();
+                
+                if (data.tds_deducted && data.tds_deducted > 0) {
+                        document.getElementById('detail-tds-wrapper').classList.remove('hidden');
+                        document.getElementById('detail-tds-amount').textContent = '₹' + data.tds_deducted.toLocaleString();
+                } else {
+                        document.getElementById('detail-tds-wrapper').classList.add('hidden');
+                }
+            } else {
+                payBox.classList.add('hidden');
+            }
+
+            // Set links
+            const viewFileBtn = document.getElementById('detail-view-file');
+            viewFileBtn.removeAttribute('href');
+            viewFileBtn.removeAttribute('target');
+            viewFileBtn.onclick = (e) => {
+                e.preventDefault();
+                viewOriginalFile(invoiceId);
+            };
+
+            document.getElementById('detail-export-excel').textContent = 'Download Excel Report';
+            document.getElementById('detail-export-excel').onclick = () => exportInvoiceExcel(data.invoice_no);
+
+            // Admin Logic
+            const role = localStorage.getItem('user_role');
+            const adminActions = document.getElementById('admin-detail-actions');
+            const approveBtn = document.getElementById('detail-approve-btn');
+            const rejectBtn = document.getElementById('detail-reject-btn');
+            const paidBtn = document.getElementById('detail-paid-btn');
+            const reviewBtn = document.getElementById('detail-review-btn');
+            const clarifyBtn = document.getElementById('detail-clarification-btn');
+            const holdBtn = document.getElementById('detail-hold-btn');
+
+            if (role === 'admin' || role === 'superadmin') {
+                adminActions.classList.remove('hidden');
+
+                // Dynamic Button Visibility
+                const rawStatus = (data.status || 'pending').toLowerCase();
+                
+                // Reset all
+                [approveBtn, paidBtn, rejectBtn, reviewBtn, clarifyBtn, holdBtn].forEach(b => {
+                    if(b) b.classList.remove('hidden');
+                });
+
+                if (rawStatus === 'paid' || rawStatus === 'rejected') {
+                     // Hide all
+                     [approveBtn, paidBtn, rejectBtn, reviewBtn, clarifyBtn, holdBtn].forEach(b => {
+                        if(b) b.classList.add('hidden');
+                     });
+                } else if (rawStatus === 'approved') {
+                     if(approveBtn) approveBtn.classList.add('hidden');
+                     // paidBtn visible, others visible (to revert/change)
+                } else {
+                     // Pending, hold, clarification, review
+                     if(paidBtn) paidBtn.classList.add('hidden');
+                     // approve visible, reject visible, others visible
+                }
+
+                if(approveBtn) approveBtn.onclick = () => handleAdminAction(data.invoice_no, 'approved');
+                if(rejectBtn) rejectBtn.onclick = () => handleAdminAction(data.invoice_no, 'rejected');
+                if(reviewBtn) reviewBtn.onclick = () => handleAdminAction(data.invoice_no, 'under_review');
+                if(clarifyBtn) clarifyBtn.onclick = () => handleAdminAction(data.invoice_no, 'pending_clarification');
+                if(holdBtn) holdBtn.onclick = () => handleAdminAction(data.invoice_no, 'hold');
+                if(paidBtn) paidBtn.onclick = () => openPayModal(data.id, data.invoice_no);
+            } else {
+                adminActions.classList.add('hidden');
+            }
+
+            // Line items logic
+            const itemsWrapper = document.getElementById('detail-line-items-wrapper');
+            const tbody = document.getElementById('detail-line-items');
+            tbody.innerHTML = '';
+            if (data.line_items && data.line_items.length > 0) {
+                itemsWrapper.classList.remove('hidden');
+                data.line_items.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-white/5';
+                    row.innerHTML = `
+                        <td class="py-3">${item.description}</td>
+                        <td class="py-3 text-right">${item.quantity || 1}</td>
+                        <td class="py-3 text-right">₹${item.total.toLocaleString()}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                itemsWrapper.classList.add('hidden');
+            }
+
+            document.getElementById('detail-modal').classList.remove('hidden');
+        } catch (err) {
+            console.error("Failed to fetch invoice details", err);
+            showToast(err.message || 'Failed to fetch invoice details', 'error');
+        }
+    }
+
+    function exportInvoiceExcel(invoiceNo) {
+        showToast('Generating Excel Report...', 'info');
+        window.location.href = `/api/reports/invoice/${invoiceNo}/excel`;
+    }
+
+    async function handleAdminAction(invoiceNo, status) {
+        let reason = '';
+        const humanStatus = status.replace('_', ' ');
+        
+        if (status === 'approved') {
+            if (!confirm('Are you sure you want to approve this invoice?')) return;
+        } else {
+            reason = prompt(`Add a comment/reason for marking as ${humanStatus}:`);
+            if (reason === null) return; // User cancelled
+            
+            if (status === 'rejected' && !reason.trim()) {
+                showToast('Rejection reason is required', 'error');
+                return;
+            }
+        }
+
+        try {
+            const response = await authFetch('/api/invoices/update-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': localStorage.getItem('auth_token') || ''
+                },
+                body: JSON.stringify({
+                    invoice_no: invoiceNo,
+                    status: status,
+                    reason: reason
+                })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                showToast(`Invoice status updated to ${humanStatus}`, 'success');
+                document.getElementById('detail-modal').classList.add('hidden');
+                if (typeof grid !== 'undefined') grid.forceRender();
+            } else {
+                const errResult = await response.json().catch(() => ({}));
+                showToast(errResult.detail || errResult.message || 'Action failed', 'error');
+            }
+        } catch (err) {
+            showToast('Network error', 'error');
+        }
+    }
+
+    let currentInvoiceAmount = 0;
+
+    async function openPayModal(invoiceId, invoiceNo) {
+        document.getElementById('pay-invoice-no').value = invoiceNo;
+        
+        // Set today's date in YYYY-MM-DD format
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('pay-date').value = `${yyyy}-${mm}-${dd}`;
+        
+        // Clear other fields
+        document.getElementById('pay-ref').value = '';
+        document.getElementById('pay-tds').value = '';
+        document.getElementById('pay-amount').value = '';
+        document.getElementById('pay-remarks').value = '';
+
+        // Fetch details to pre-fill TDS and Calculate Paid Amount
+        try {
+            const res = await authFetch(`/api/invoices/detail?invoice_id=${invoiceId}`);
+            if (res.ok) {
+                const data = await res.json();
+                currentInvoiceAmount = data.amount || 0;
+                
+                let tdsAmt = 0;
+                if (data.vendor_tds_applicable && data.vendor_tds_rate) {
+                     const rate = parseFloat(data.vendor_tds_rate);
+                     tdsAmt = (currentInvoiceAmount * rate) / 100;
+                     document.getElementById('pay-tds').value = tdsAmt.toFixed(2);
+                }
+                
+                // Calculate and set paid amount (Invoice - TDS)
+                const paidAmt = currentInvoiceAmount - tdsAmt;
+                document.getElementById('pay-amount').value = paidAmt.toFixed(2);
+            }
+        } catch(e) {
+            console.warn("Failed to fetch invoice details for TDS pre-fill", e);
+        }
+        
+        document.getElementById('pay-modal').classList.remove('hidden');
+    }
+
+    function updatePaidAmount() {
+        const tds = parseFloat(document.getElementById('pay-tds').value) || 0;
+        const paidAmt = currentInvoiceAmount - tds;
+        document.getElementById('pay-amount').value = paidAmt.toFixed(2);
+    }
+    
+    // Attach listener for TDS change
+    document.addEventListener('DOMContentLoaded', () => {
+         const tdsField = document.getElementById('pay-tds');
+         if(tdsField) {
+             tdsField.addEventListener('input', updatePaidAmount);
+         }
+    });
+
+    async function confirmPay() {
+        const invoiceNo = document.getElementById('pay-invoice-no').value;
+        const date = document.getElementById('pay-date').value;
+        const ref = document.getElementById('pay-ref').value;
+        const tds = document.getElementById('pay-tds').value;
+        const paidAmount = document.getElementById('pay-amount').value;
+        const remarks = document.getElementById('pay-remarks').value;
+
+        // Validate Payment Date
+        if (!date) {
+            showToast("Payment Date is required", "error");
+            return;
+        }
+
+        // Check if date is not in the future
+        const selectedDate = new Date(date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (selectedDate > today) {
+            showToast("Payment Date cannot be in the future", "error");
+            return;
+        }
+
+        // Validate Payment Reference
+        if (!ref) {
+            showToast("Payment Reference is required", "error");
+            return;
+        }
+
+        // Validate Paid Amount
+        if (!paidAmount || parseFloat(paidAmount) < 0) {
+             showToast("Valid Paid Amount is required", "error");
+             return;
+        }
+
+        try {
+            const res = await authFetch('/api/invoices/update-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    invoice_no: invoiceNo,
+                    payment_date: date,
+                    payment_reference: ref,
+                    tds_amount: parseFloat(tds) || 0,
+                    paid_amount: parseFloat(paidAmount),
+                    payment_remarks: remarks
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Payment update failed");
+            }
+
+            showToast("Payment processed successfully", "success");
+            document.getElementById('pay-modal').classList.add('hidden');
+            document.getElementById('detail-modal').classList.add('hidden');
+            if (typeof grid !== 'undefined') grid.forceRender();
+        } catch (err) {
+            showToast(err.message, "error");
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Set max date for payment date input to today
+        const payDateInput = document.getElementById('pay-date');
+        if (payDateInput) {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            payDateInput.setAttribute('max', `${yyyy}-${mm}-${dd}`);
+        }
+
+        const role = localStorage.getItem('user_role');
+        if (role === 'admin' || role === 'superadmin') {
+            document.getElementById('admin-vendor-container').classList.remove('hidden');
+
+            // Load vendors
+            try {
+                const res = await authFetch('/api/admin/vendors');
+                const vendors = await res.json();
+                const select = document.getElementById('upload-vendor-id');
+                vendors.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.id;
+                    opt.textContent = v.company_name;
+                    opt.className = 'bg-slate-50 dark:bg-slate-900';
+                    select.appendChild(opt);
+                });
+            } catch (err) { console.error("Failed to load vendors"); }
+        }
+
+        // Auto-format date input and set max date validation
+        const invoiceDateInput = document.getElementById('manual_date');
+        if (invoiceDateInput) {
+            // Auto-format as DD-MM-YYYY
+            invoiceDateInput.addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+                if (value.length >= 2) {
+                    value = value.slice(0, 2) + '-' + value.slice(2);
+                }
+                if (value.length >= 5) {
+                    value = value.slice(0, 5) + '-' + value.slice(5, 9);
+                }
+                e.target.value = value;
+            });
+
+            // Validate date is not in the future
+            invoiceDateInput.addEventListener('blur', (e) => {
+                const dateStr = e.target.value;
+                if (dateStr.length === 10) {
+                    const [day, month, year] = dateStr.split('-').map(Number);
+                    const inputDate = new Date(year, month - 1, day);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    if (inputDate > today) {
+                        showToast('Invoice date cannot be in the future', 'error');
+                        e.target.value = '';
+                    }
+                }
+            });
+
+            // Sync with date picker
+            const datePickerInput = document.getElementById('manual_date_picker');
+            if (datePickerInput) {
+                // Set max date to today
+                const today = new Date().toISOString().split('T')[0];
+                datePickerInput.setAttribute('max', today);
+
+                // When date picker changes, update text input
+                datePickerInput.addEventListener('change', (e) => {
+                    const dateValue = e.target.value; // YYYY-MM-DD
+                    if (dateValue) {
+                        const [year, month, day] = dateValue.split('-');
+                        invoiceDateInput.value = `${day}-${month}-${year}`;
+                    }
+                });
+
+                // When text input changes, update date picker
+                invoiceDateInput.addEventListener('change', (e) => {
+                    const dateStr = e.target.value; // DD-MM-YYYY
+                    if (dateStr.length === 10) {
+                        const [day, month, year] = dateStr.split('-');
+                        datePickerInput.value = `${year}-${month}-${day}`;
+                    } else {
+                        datePickerInput.value = ''; // Clear if invalid format
+                    }
+                });
+            }
+        }
+    });
+
+    // Total Amount Calculation Logic
+    document.addEventListener('DOMContentLoaded', () => {
+        const taxable = document.getElementById('manual_taxable_value');
+        const nonTaxable = document.getElementById('manual_non_taxable_value');
+        const discount = document.getElementById('manual_discount');
+        const cgst = document.getElementById('manual_cgst');
+        const sgst = document.getElementById('manual_sgst');
+        const igst = document.getElementById('manual_igst');
+        const totalAmount = document.getElementById('manual_total_amount');
+
+        const inputs = [taxable, nonTaxable, discount, cgst, sgst, igst];
+
+        function calculateTotal() {
+            const vTaxable = parseFloat(taxable.value) || 0;
+            const vNonTaxable = parseFloat(nonTaxable.value) || 0;
+            const vDiscount = parseFloat(discount.value) || 0;
+            const vCgst = parseFloat(cgst.value) || 0;
+            const vSgst = parseFloat(sgst.value) || 0;
+            const vIgst = parseFloat(igst.value) || 0;
+
+            const total = (vTaxable + vNonTaxable - vDiscount + vCgst + vSgst + vIgst);
+            totalAmount.value = total.toFixed(2);
+        }
+
+        inputs.forEach(input => {
+            if (input) {
+                input.addEventListener('input', calculateTotal);
+            }
+        });
+
+        if (cgst && sgst && igst) {
+            // When CGST is entered, auto-fill SGST and disable IGST
+            cgst.addEventListener('input', (e) => {
+                const cgstValue = e.target.value;
+                if (cgstValue && parseFloat(cgstValue) > 0) {
+                    sgst.value = cgstValue;
+                    igst.value = '0';
+                    igst.disabled = true;
+                    igst.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    sgst.value = '';
+                    igst.disabled = false;
+                    igst.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                calculateTotal(); // Recalculate after auto-fill
+            });
+
+            // When IGST is entered, clear CGST/SGST
+            igst.addEventListener('input', (e) => {
+                const igstValue = e.target.value;
+                if (igstValue && parseFloat(igstValue) > 0) {
+                    cgst.value = '0';
+                    sgst.value = '0';
+                    cgst.disabled = true;
+                    sgst.disabled = true;
+                    cgst.classList.add('opacity-50', 'cursor-not-allowed');
+                    sgst.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    cgst.disabled = false;
+                    sgst.disabled = false;
+                    cgst.classList.remove('opacity-50', 'cursor-not-allowed');
+                    sgst.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                calculateTotal(); // Recalculate after auto-fill
+            });
+        }
+    });
+
+    // Document Type Change Handler - Show/Hide Note Number Field
+    document.addEventListener('DOMContentLoaded', () => {
+        const docTypeSelect = document.getElementById('manual_document_type');
+        const noteNumberField = document.getElementById('note_number_field');
+        const noteNumberLabel = document.getElementById('note_number_label');
+
+        if (docTypeSelect && noteNumberField && noteNumberLabel) {
+            docTypeSelect.addEventListener('change', (e) => {
+                const selectedType = e.target.value;
+
+                if (selectedType === 'credit_note') {
+                    noteNumberField.classList.remove('hidden');
+                    noteNumberLabel.textContent = 'Credit Note Number';
+                } else if (selectedType === 'debit_note') {
+                    noteNumberField.classList.remove('hidden');
+                    noteNumberLabel.textContent = 'Debit Note Number';
+                } else {
+                    noteNumberField.classList.add('hidden');
+                    document.getElementById('manual_note_number').value = '';
+                }
+            });
+        }
+    });
+
+    // Add generating toast to export buttons
+    document.querySelectorAll('a[href^="/api/reports"]').forEach(link => {
+        link.addEventListener('click', () => {
+            showToast('Generating report... download will start shortly.', 'info');
+        });
+    });
+
+    // ============ SECURITY: Hide export buttons for non-admin roles ============
+    document.addEventListener('DOMContentLoaded', () => {
+        const role = localStorage.getItem('user_role');
+        if (role === 'vendor' || role === 'user' || role === 'finance') {
+            document.querySelectorAll('a[href^="/api/reports"]').forEach(e => e.remove());
+        } else if (role === 'admin' || role === 'superadmin') {
+            // Show CSV button
+            document.getElementById('admin-export-csv')?.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}

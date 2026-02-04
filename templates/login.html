@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | NVS Vendor Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0E7C7B;
+            --secondary: #F8FAFC;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #FFFFFF 0%, #F1F5F9 100%);
+            min-height: 100vh;
+            position: relative;
+            color: #0F172A;
+        }
+
+        .font-head {
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.04);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary) 0%, #1e293b 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #FFFFFF;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(14, 124, 123, 0.3);
+            opacity: 0.9;
+        }
+
+        .animate-in {
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .glow {
+            box-shadow: 0 0 60px rgba(14, 124, 123, 0.05);
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center p-4">
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-500/5 blur-[120px] rounded-full"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-sky-500/5 blur-[120px] rounded-full"></div>
+    </div>
+
+    <div class="relative z-10 w-full max-w-md animate-in">
+        <div class="text-center mb-8">
+            <div class="inline-flex flex-col items-center mb-6">
+                <div
+                    class="h-36 flex items-center justify-center mb-4">
+                    <img src="/static/img/logo.jpg" alt="NVS Travel Solutions Logo" class="h-full object-contain">
+                </div>
+                <span class="text-[10px] text-slate-400 uppercase tracking-[0.3em] font-bold">Vendor Management Portal</span>
+            </div>
+            <h1 class="text-3xl font-bold text-[#0F172A] mb-2">Welcome Back</h1>
+            <p class="text-slate-500">Sign in to manage your fleet operations</p>
+        </div>
+
+        <div class="glass rounded-3xl p-8 shadow-2xl shadow-slate-200/50">
+            <form id="login-form" class="space-y-6" target="_self">
+                <div id="error-message"
+                    class="hidden bg-rose-50 border border-rose-100 text-rose-500 px-4 py-3 rounded-xl text-sm font-medium">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Email Address</label>
+                    <input type="email" id="email" name="email" required
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-medium"
+                        placeholder="you@company.com">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Password</label>
+                    <input type="password" id="password" name="password" required minlength="6" maxlength="72"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-medium"
+                        placeholder="••••••••">
+                </div>
+
+                <div class="flex items-center justify-between text-sm">
+                    <label class="flex items-center space-x-2 text-slate-500 cursor-pointer">
+                        <input type="checkbox"
+                            class="rounded bg-slate-50 border-slate-200 text-teal-500 focus:ring-teal-500">
+                        <span>Remember me</span>
+                    </label>
+                    <a href="#" class="text-teal-600 font-semibold hover:text-teal-700 transition-colors">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="w-full btn-primary py-4 rounded-xl font-bold shadow-lg shadow-teal-500/20">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+                <p class="text-slate-400 text-sm">Use your credentials to sign in.</p>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center">
+            <p class="text-slate-400 text-[10px] font-medium tracking-wide">&copy; 2026 NVS Travel Solutions Group. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Store token and redirect
+                    localStorage.setItem('auth_token', data.token);
+                    localStorage.setItem('user_name', data.name);
+                    localStorage.setItem('user_role', data.role);
+                    // Use replace to prevent back button and ensure single tab
+                    window.location.replace('/');
+                } else {
+                    errorDiv.textContent = data.detail || data.message || 'Invalid credentials';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Connection error. Please try again.';
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NVS Travels - Vendor Portal{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#1e293b' // Custom dark card bg
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Theme Variables */
+        :root {
+            /* Light Mode - Corporate Slate */
+            --bg-body: #F1F5F9;
+            --bg-glass: rgba(255, 255, 255, 0.7);
+            --bg-card: #FFFFFF;
+            --text-main: #0F172A;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --border-glass: rgba(0, 0, 0, 0.04);
+
+            --primary: #0E7C7B;
+            --primary-accent: #1ABCBB;
+            --secondary: #111827;
+
+            /* Status Badges - Light */
+            --status-pending: #F59E0B;
+            --status-review: #38BDF8;
+            --status-approved: #10B981;
+            --status-rejected: #EF4444;
+            --status-paid: #22C55E;
+
+            --shadow: rgba(0, 0, 0, 0.05);
+            --grad-start: #0E7C7B;
+            --grad-end: #14B8A6;
+        }
+
+        html.dark :root {
+            /* Dark Mode - Deep Slate */
+            --bg-body: #020617;
+            --bg-glass: rgba(15, 23, 42, 0.8);
+            --bg-card: #0F172A;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border: #334155;
+            --border-glass: rgba(255, 255, 255, 0.08);
+
+            --primary: #3DD9CB;
+            --primary-accent: #0B7A79;
+            --secondary: #F8FAFC;
+
+            /* Status Badges - Dark */
+            --status-pending: #FBBF24;
+            --status-review: #60A5FA;
+            --status-approved: #22C55E;
+            --status-rejected: #F87171;
+            --status-paid: #4ADE80;
+
+            --shadow: rgba(0, 0, 0, 0.70);
+            --grad-start: #3DD9CB;
+            --grad-end: #14B8A6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .glass {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--secondary);
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+
+        /* Grid.js Overrides for Theme Support */
+        .gridjs-container {
+            color: var(--text-main) !important;
+            background-color: transparent !important;
+        }
+
+        .gridjs-wrapper {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .gridjs-table {
+            background-color: transparent !important;
+            width: 100% !important;
+        }
+
+        .gridjs-tr {
+            background-color: transparent !important;
+            transition: background-color 0.2s;
+        }
+
+        .gridjs-tr:hover {
+            background-color: var(--border-glass) !important;
+        }
+
+        .gridjs-th {
+            background-color: var(--bg-card) !important;
+            color: var(--text-muted) !important;
+            border: 1px solid var(--border-glass) !important;
+            text-transform: uppercase !important;
+            font-size: 10px !important;
+            letter-spacing: 0.1em !important;
+        }
+
+        .gridjs-td {
+            background-color: transparent !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border-glass) !important;
+        }
+
+        .gridjs-footer {
+            background-color: transparent !important;
+            border: none !important;
+            color: var(--text-muted) !important;
+            padding: 12px 0 !important;
+        }
+
+        .gridjs-search-input {
+            background-color: var(--bg-card) !important;
+            border: 1px solid var(--border-glass) !important;
+            color: var(--text-main) !important;
+            border-radius: 8px !important;
+        }
+
+        .gridjs-pagination .gridjs-pages button {
+            background-color: var(--bg-card) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border-glass) !important;
+        }
+
+        .gridjs-pagination .gridjs-pages button:hover {
+            background-color: var(--primary) !important;
+            color: var(--secondary) !important;
+        }
+
+        .gridjs-tbody {
+            background-color: transparent !important;
+        }
+
+        .gridjs-message {
+            background-color: rgba(15, 23, 42, 0.9) !important;
+            color: #94a3b8 !important;
+            border: none !important;
+        }
+
+        .gridjs-loading-bar {
+            background-color: var(--primary) !important;
+        }
+
+        /* Dark Mode Form Input Styles */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(2);
+            cursor: pointer;
+            opacity: 1;
+            width: 20px;
+            height: 20px;
+        }
+
+        input[type="date"]::-webkit-inner-spin-button,
+        input[type="date"]::-webkit-clear-button {
+            filter: invert(1);
+        }
+
+        input[type="date"],
+        input[type="datetime-local"],
+        input[type="time"] {
+            color-scheme: dark;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        select option {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: #64748b;
+        }
+
+        /* Ensure all inputs have consistent text color */
+        input,
+        select,
+        textarea {
+            color: var(--text-main);
+            background-color: transparent;
+            /* Allow utility classes to control bg */
+        }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="min-h-screen flex flex-col">
+    <nav class="glass sticky top-0 z-50 py-4 px-6 mb-8">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="/" class="flex items-center space-x-4 hover:opacity-80 transition-opacity">
+                <div class="h-16 flex items-center justify-center">
+                    <img src="/static/img/logo.jpg" alt="NVS Travel Solutions Logo" class="h-full object-contain">
+                </div>
+                <div class="border-l border-slate-200 pl-4 py-1">
+                    <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold block">Vendor Portal</span>
+                </div>
+            </a>
+            <div id="nav-links" class="hidden md:flex space-x-8 text-sm font-medium">
+                <a href="/" class="hover:text-sky-400 transition-colors">Dashboard</a>
+                <a href="/invoices" id="nav-invoices" class="hover:text-sky-400 transition-colors hidden">Invoice
+                    Management</a>
+                <a href="/admin" id="nav-admin" class="hover:text-amber-400 transition-colors hidden">Finance Admin</a>
+                <a href="/admin/vendors" id="nav-vendors" class="hover:text-amber-400 transition-colors hidden">Vendor
+                    Master</a>
+            </div>
+
+
+
+            <div>
+                <span id="user-display"
+                    class="text-xs text-slate-600 dark:text-slate-300 mr-4 font-medium italic"></span>
+                <button onclick="handleLogout()"
+                    class="glass px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto px-6 w-full">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-24 right-6 z-[200] space-y-4 pointer-events-none"></div>
+
+    <!-- human chat widget -->
+
+
+    <!-- Popup Notification -->
+    <div id="notification-popup"
+        class="fixed bottom-24 right-6 z-[100] transform translate-y-full opacity-0 transition-all duration-500 ease-out pointer-events-none">
+        <div
+            class="glass p-4 rounded-2xl border-l-4 border-emerald-500 shadow-2xl flex items-center space-x-4 max-w-sm pointer-events-auto">
+            <div class="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z">
+                    </path>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-emerald-400">New Message</p>
+                <p id="popup-text" class="text-sm text-white line-clamp-2">You have a new message from Admin.</p>
+            </div>
+            <button onclick="closePopup()" class="text-slate-500 dark:text-slate-400 hover:text-white">✕</button>
+        </div>
+    </div>
+
+    <footer class="mt-12 py-8 px-6 border-t border-slate-800 text-center text-slate-400 text-sm">
+        <p>&copy; 2026 NVS Travel Solutions. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Force Light Theme - Standard Corporate Slate
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('color-theme', 'light');
+
+
+    </script>
+
+    <script>
+        let currentChatReceiver = null;
+        let lastMessageId = 0;
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let icon = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
+            let color = type === 'success' ? 'emerald' : (type === 'error' ? 'rose' : 'sky');
+
+            // Handle potential object error messages
+            const displayMsg = typeof message === 'string' ? message : (message.detail || message.message || "An error occurred");
+
+            toast.className = `max-w-sm w-full glass bg-white dark:bg-slate-900/60 border border-${color}-500/50 shadow-lg rounded-xl pointer-events-auto flex p-4 animate-in slide-in-from-right-8 duration-300`;
+            toast.innerHTML = `<div class="flex-shrink-0 text-${color}-600 dark:text-${color}-400 font-bold">${icon}</div><div class="ml-3 text-sm font-medium text-slate-800 dark:text-white">${displayMsg}</div>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 500); }, 4000);
+        }
+
+        function dismissAllToasts() {
+            const container = document.getElementById('toast-container');
+            if (container) {
+                container.innerHTML = '';
+            }
+        }
+
+        function showNotificationPopup(text) {
+            const popup = document.getElementById('notification-popup');
+            document.getElementById('popup-text').textContent = text;
+            popup.classList.remove('translate-y-full', 'opacity-0');
+            popup.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(closePopup, 5000);
+        }
+
+        function closePopup() {
+            const popup = document.getElementById('notification-popup');
+            popup.classList.remove('translate-y-0', 'opacity-100');
+            popup.classList.add('translate-y-full', 'opacity-0');
+        }
+
+        function handleLogout() {
+            localStorage.clear();
+            showToast('Logged out successfully', 'success');
+            setTimeout(() => window.location.href = '/login', 500);
+        }
+
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('auth_token');
+            const role = localStorage.getItem('user_role');
+            const name = localStorage.getItem('user_name');
+            const path = window.location.pathname;
+
+            // Auth Guard
+            if (!token && path !== '/login') {
+                window.location.href = '/login';
+                return;
+            }
+
+            // Role Guard for Admin Pages
+            if (path.startsWith('/admin') && !['admin', 'superadmin', 'finance'].includes(role)) {
+                window.location.href = '/';
+                return;
+            }
+
+            if (name) document.getElementById('user-display').textContent = `Welcome, ${name}`;
+
+            if (['admin', 'superadmin', 'finance'].includes(role)) {
+                ['nav-admin', 'nav-vendors', 'nav-invoices'].forEach(id => document.getElementById(id)?.classList.remove('hidden'));
+            } else if (role === 'vendor') {
+                document.getElementById('nav-invoices')?.classList.remove('hidden');
+            }
+            document.getElementById('nav-links').classList.remove('hidden');
+
+            // Start chat polling (removed)
+            // loadUsers();
+            // setInterval(loadChatHistory, 5000);
+
+            // document.getElementById('chat-toggle').addEventListener('click', () => {
+            //     document.getElementById('chat-window').classList.toggle('hidden');
+            // });
+        });
+
+        // Global ESC key handler - closes any visible modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('[id$="-modal"]:not(.hidden)').forEach(modal => {
+                    modal.classList.add('hidden');
+                });
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

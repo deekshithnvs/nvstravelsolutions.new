@@ -1,0 +1,1605 @@
+{% extends "base.html" %}
+
+{% block title %}Finance Dashboard | NVS Admin{% endblock %}
+
+{% block content %}
+<div class="space-y-8 animate-in fade-in duration-700">
+    <div class="flex justify-between items-start">
+        <div>
+            <h1 class="text-3xl font-bold font-head">Finance <span class="gradient-text">Operations</span></h1>
+            <p class="text-slate-600 dark:text-slate-300 mt-2">Executive oversight, invoice verification, and payout
+                processing.</p>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="downloadInvoicesCSV()"
+                class="glass px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 hover:bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-white transition-colors">
+                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                <span>Export CSV</span>
+            </button>
+            <button id="header-upload-btn" onclick="openUploadModal()"
+                class="btn-primary px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all duration-300 shadow-lg shadow-teal-500/20 hover:scale-105">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span>New Invoice</span>
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass p-6 rounded-2xl relative overflow-hidden group">
+            <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Pending
+                Approval</p>
+            <h3 class="text-2xl font-bold mt-1" id="stat-pending-amount">₹0</h3>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 mt-4 rounded-full overflow-hidden">
+                <div id="stat-pending-progress" class="bg-amber-500 h-full w-0 transition-all duration-1000"></div>
+            </div>
+        </div>
+        <div class="glass p-6 rounded-2xl border-teal-500/20">
+            <p class="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
+                Pending GST (Incl. IGST)</p>
+            <h3 class="text-2xl font-bold mt-1 text-teal-600 dark:text-teal-400" id="stat-pending-tax">₹0</h3>
+            <p class="text-[10px] text-slate-500 mt-2 font-medium">Consolidated tax component</p>
+        </div>
+        <div class="glass p-6 rounded-2xl">
+            <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Active Vendors
+            </p>
+            <h3 class="text-2xl font-bold mt-1" id="stat-active-vendors">0</h3>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-2 font-medium">Verified
+                partners</p>
+        </div>
+    </div>
+
+    <!-- Approval Queue with Grid.js -->
+    <div class="glass p-8 rounded-3xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-semibold">Approval Queue <span id="pending-count"
+                    class="text-xs bg-sky-500/20 text-sky-400 px-2 py-1 rounded-full ml-2">Loading...</span></h2>
+            <div class="flex items-center space-x-2">
+                <select id="filter-vendor" onchange="applyFilters()"
+                    class="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-teal-500 text-slate-700 dark:text-slate-300 min-w-[150px]">
+                    <option value="">All Vendors</option>
+                </select>
+                <input type="date" id="filter-start-date"
+                    class="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-teal-500 text-slate-700 dark:text-slate-300">
+                <span class="text-slate-400 font-bold">-</span>
+                <input type="date" id="filter-end-date"
+                    class="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-teal-500 text-slate-700 dark:text-slate-300">
+                <button onclick="applyFilters()"
+                    class="bg-sky-500/10 text-sky-500 hover:bg-sky-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                    Filter
+                </button>
+            </div>
+        </div>
+        <div id="admin-table-wrapper"></div>
+    </div>
+
+    <!-- Reject Modal -->
+    <div id="reject-modal"
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-white dark:bg-slate-950/80 backdrop-blur-sm"
+        onclick="if(event.target === this) closeRejectModal()">
+        <div class="glass w-full max-w-md rounded-3xl p-8">
+            <h3 class="text-lg font-bold mb-4">Reject Invoice</h3>
+            <input type="hidden" id="reject-invoice-no">
+            <input type="hidden" id="reject-email">
+            <input type="hidden" id="reject-mobile">
+            <textarea id="reject-reason" placeholder="Enter rejection reason..."
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 h-24 focus:outline-none focus:border-rose-500"></textarea>
+            <div class="flex space-x-4 mt-6">
+                <button onclick="closeRejectModal()" class="flex-1 glass py-3 rounded-xl font-bold">Cancel</button>
+                <button onclick="confirmReject()" class="flex-1 bg-rose-500 py-3 rounded-xl font-bold">Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve Modal -->
+    <div id="approve-modal"
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-white dark:bg-slate-950/80 backdrop-blur-sm"
+        onclick="if(event.target === this) closeApproveModal()">
+        <div class="glass w-full max-w-md rounded-3xl p-8">
+            <h3 class="text-lg font-bold mb-4">Confirm Approval</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Are you sure you want to
+                provide final approval
+                for this invoice?
+                This action will mark it as ready for payment.</p>
+            <input type="hidden" id="approve-invoice-no">
+            <div class="space-y-4">
+                <div class="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Processing
+                            Amount</span>
+                        <span class="text-sm font-bold text-slate-800 dark:text-white">₹<span
+                                id="approve-amount-display">0.00</span></span>
+                    </div>
+                    <div class="flex justify-between items-center mt-3">
+                        <span class="text-xs font-bold text-emerald-400 uppercase">TDS Deduction (₹)</span>
+                        <input type="number" id="approve-tds-val" step="0.01" min="0" oninput="updateNetPayable()"
+                            class="w-24 bg-slate-50 dark:bg-slate-900 border border-emerald-500/30 rounded px-2 py-1 text-right text-sm font-bold text-emerald-400 outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-emerald-500/20 flex justify-between items-center">
+                        <span class="text-xs font-bold text-slate-700 dark:text-white uppercase">Net Payable</span>
+                        <span class="text-base font-bold text-slate-800 dark:text-white">₹<span
+                                id="approve-net-display">0.00</span></span>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Approval Comment
+                        (Optional)</label>
+                    <textarea id="approve-comment" rows="2" placeholder="e.g., Verified against PO-123"
+                        class="w-full bg-slate-50 dark:bg-slate-900 border border-white/10 rounded-xl px-4 py-3 focus:border-emerald-500 outline-none text-sm"></textarea>
+                </div>
+            </div>
+
+            <div class="flex space-x-4 mt-8">
+                <button onclick="closeApproveModal()"
+                    class="flex-1 glass py-4 rounded-xl font-bold hover:bg-slate-100 dark:bg-slate-800 transition-colors">Cancel</button>
+                <button onclick="confirmApprove()"
+                    class="flex-1 btn-primary py-4 rounded-xl font-bold shadow-lg shadow-emerald-500/20">Approve &
+                    Process</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pay Modal -->
+    <div id="pay-modal"
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-white dark:bg-slate-950/80 backdrop-blur-sm"
+        onclick="if(event.target === this) closePayModal()">
+        <div class="glass w-full max-w-md rounded-3xl p-8">
+            <h3 class="text-lg font-bold mb-4">Process Payment</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Enter payment reference
+                details to mark this
+                invoice as PAID.</p>
+            <input type="hidden" id="pay-invoice-no">
+
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Payment Date</label>
+                    <input type="date" id="pay-date" required
+                        class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 transition-all">
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Payment Reference (UTR
+                        / Cheque)</label>
+                    <input type="text" id="pay-ref" placeholder="e.g., UTR-123456789" required
+                        class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 transition-all">
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">TDS Amount (₹)</label>
+                    <input type="number" id="pay-tds" step="0.01" min="0" placeholder="0.00"
+                        class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 transition-all">
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Paid Amount (₹)</label>
+                    <input type="number" id="pay-amount" step="0.01" min="0" placeholder="0.00" required
+                        class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 transition-all">
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Actual amount paid (Invoice Amount - TDS - Other Deductions)</p>
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Remarks</label>
+                    <textarea id="pay-remarks" rows="2" placeholder="Optional remarks..."
+                        class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 transition-all text-sm"></textarea>
+                </div>
+            </div>
+
+            <div class="flex space-x-4 mt-8">
+                <button onclick="closePayModal()"
+                    class="flex-1 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 py-3 rounded-xl font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Cancel</button>
+                <button onclick="confirmPay()"
+                    class="flex-1 btn-primary py-3 rounded-xl font-semibold shadow-lg transition-colors">Confirm Payment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Invoice Modal -->
+    <div id="upload-modal"
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-white dark:bg-slate-950/80 backdrop-blur-sm"
+        onclick="if(event.target === this) closeUploadModal()">
+        <div class="glass w-full max-w-4xl rounded-3xl p-8 border border-white/10 shadow-2xl relative">
+            <button onclick="closeUploadModal()"
+                class="absolute top-6 right-6 text-slate-900 hover:text-black bg-white/30 hover:bg-white/50 rounded-full p-1 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+
+            <h3 class="text-xl font-bold mb-6 flex items-center">
+                <span class="w-10 h-10 bg-teal-500/20 rounded-xl flex items-center justify-center text-teal-600 dark:text-teal-400 mr-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                </span>
+                Upload Invoice
+            </h3>
+
+            <form id="upload-form" class="space-y-6">
+                <!-- Grid Container for better space utilization -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Left Column: Vendor and Mode -->
+                    <div class="space-y-6">
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Vendor</label>
+                            <select id="upload_vendor_id" required
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-white/10 rounded-xl px-4 py-3 focus:border-teal-500 outline-none">
+                                <option value="">Select Vendor...</option>
+                            </select>
+                        </div>
+
+
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Invoice File (PDF/Image)</label>
+                            <div class="border-2 border-dashed border-white/10 rounded-2xl p-8 text-center hover:border-teal-500/50 transition-colors cursor-pointer relative group h-48 flex flex-col items-center justify-center">
+                                <input type="file" id="invoice_file" accept=".pdf,.png,.jpg,.jpeg" required
+                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    onchange="handleFileSelect(this)">
+                                <div class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-3 group-hover:bg-teal-500/20 transition-colors">
+                                    <svg class="w-6 h-6 text-slate-400 group-hover:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                    </svg>
+                                </div>
+                                <div id="file-preview-text" class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                    Drag & drop or click to upload
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Manual Fields (Conditional) -->
+                    <div id="manual-fields-container" class="space-y-4">
+                        <div id="manual-fields" class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Invoice Number</label>
+                                <input type="text" id="manual_invoice_no" placeholder="INV-001"
+                                    class="w-full bg-slate-50 dark:bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none text-sm">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Invoice Date</label>
+                                <input type="date" id="manual_date"
+                                    class="w-full bg-slate-50 dark:bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none text-sm text-white/80">
+                            </div>
+                            <div class="space-y-2 col-span-2">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Category</label>
+                                <select id="manual_category"
+                                    class="w-full bg-slate-50 dark:bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 focus:border-teal-500 outline-none text-sm">
+                                    <option value="General">General</option>
+                                    <option value="Travel">Travel</option>
+                                    <option value="Software">Software</option>
+                                    <option value="Assets">Assets</option>
+                                    <option value="Utilities">Utilities</option>
+                                    <option value="Services">Services</option>
+                                    <option value="Office Supplies">Office Supplies</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Rent">Rent</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="Consulting">Consulting</option>
+                                    <option value="Fuel">Fuel</option>
+                                    <option value="Entertainment">Entertainment</option>
+                                </select>
+                            </div>
+
+                            <!-- Financial Grid -->
+                            <div class="col-span-2 grid grid-cols-3 gap-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase">Taxable</label>
+                                    <input type="number" id="manual_taxable_value" step="0.01" value="0.00"
+                                        class="calc-input w-full bg-slate-900/50 border border-white/10 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-none text-xs text-right">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase">Non-Taxable</label>
+                                    <input type="number" id="manual_non_taxable_value" step="0.01" value="0.00"
+                                        class="calc-input w-full bg-slate-900/50 border border-white/10 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-none text-xs text-right">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase text-rose-400">Discount</label>
+                                    <input type="number" id="manual_discount" step="0.01" value="0.00"
+                                        class="calc-input w-full bg-slate-900/50 border border-rose-500/20 rounded-lg px-2 py-1.5 focus:border-rose-500 outline-none text-xs text-right text-rose-400">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase">CGST</label>
+                                    <input type="number" id="manual_cgst" step="0.01" value="0.00"
+                                        class="calc-input w-full bg-slate-900/50 border border-white/10 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-none text-xs text-right">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase">SGST</label>
+                                    <input type="number" id="manual_sgst" step="0.01" value="0.00" readonly
+                                        class="calc-input w-full bg-slate-800/50 border border-white/5 rounded-lg px-2 py-1.5 outline-none text-xs text-right opacity-50">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase">IGST</label>
+                                    <input type="number" id="manual_igst" step="0.01" value="0.00"
+                                        class="calc-input w-full bg-slate-900/50 border border-white/10 rounded-lg px-2 py-1.5 focus:border-teal-500 outline-none text-xs text-right">
+                                </div>
+                                
+                                <div class="col-span-3 pt-2 mt-2 border-t border-white/5 flex justify-between items-center text-teal-400">
+                                    <span class="text-xs font-bold uppercase tracking-wider">Total Calculated</span>
+                                    <input type="number" id="manual_total_amount" step="0.01" value="0.00" readonly
+                                        class="bg-transparent border-none text-right font-bold text-lg outline-none w-32">
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 col-span-2">
+                                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Description / Notes</label>
+                                <textarea id="manual_description" rows="2" placeholder="Optional description..."
+                                    class="w-full bg-slate-50 dark:bg-slate-900 border border-white/10 rounded-xl px-4 py-3 focus:border-teal-500 outline-none text-sm"></textarea>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" id="upload-submit-btn"
+                        class="w-full btn-primary py-4 rounded-xl font-bold shadow-lg shadow-teal-500/20 flex items-center justify-center space-x-2">
+                        <span>Upload Invoice</span>
+                    </button>
+                    <p id="upload-status" class="text-center text-xs text-slate-500 dark:text-slate-400 mt-3 hidden">
+                        <span class="inline-block animate-spin mr-2">◌</span> Submitting invoice...
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Invoice Detail Modal -->
+    <div id="detail-modal"
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-white dark:bg-slate-950/80 backdrop-blur-sm"
+        onclick="if(event.target === this) this.classList.add('hidden')">
+        <div class="glass w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+            <div class="p-6 border-b border-white/10 flex justify-between items-center gradient-bg">
+                <div class="flex items-center space-x-4">
+                    <button onclick="openUploadModal()"
+                        class="flex items-center space-x-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-4 py-2 rounded-lg font-bold hover:bg-emerald-500/20 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        <span>Upload Invoice</span>
+                    </button>
+                    <div class="flex items-center space-x-3 pl-4 border-l border-white/10">
+                        <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-slate-950">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-white" id="detail-invoice-no-title">Invoice Details</h3>
+                            <p class="text-[10px] text-white/70 uppercase tracking-widest font-bold"
+                                id="detail-vendor-name">VENDOR NAME</p>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('detail-modal').classList.add('hidden')"
+                        class="text-slate-900 hover:text-black bg-white/30 hover:bg-white/50 rounded-full p-1 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div> <!-- Close Left Side (383) -->
+            </div> <!-- Close Header (382) -->
+
+                <div class="p-8 space-y-8 max-h-[70vh] overflow-y-auto">
+                    <!-- Top Row: Essential Info Bar -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-200 dark:border-white/10 shadow-sm">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Billing Date</label>
+                            <p class="text-sm font-bold text-slate-900 dark:text-white" id="detail-date">-</p>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Workflow Status</label>
+                            <div class="flex items-center space-x-2">
+                                <span id="detail-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]"></span>
+                                <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-200/50 dark:bg-white/5 text-slate-700 dark:text-slate-300 border border-slate-300/30 dark:border-white/10 uppercase tracking-tighter" id="detail-status">-</span>
+                            </div>
+                        </div>
+                        <div class="space-y-1 text-center md:text-left">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Vendor Category</label>
+                            <p class="text-sm font-bold text-teal-600 dark:text-teal-400" id="detail-category">Basic</p>
+                        </div>
+                        <div class="space-y-1 text-right md:text-left">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Invoice Type</label>
+                            <p class="text-sm font-bold text-sky-600 dark:text-sky-400" id="detail-type">Digital</p>
+                        </div>
+                    </div>
+
+                    <!-- Main Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                        <!-- Left Column: Financials -->
+                        <div class="space-y-8">
+                            <div class="relative overflow-hidden p-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-xl">
+                                <div class="relative z-10 flex items-center justify-between">
+                                    <div class="space-y-1">
+                                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Valuation</label>
+                                        <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tighter" id="detail-amount">₹0.00</p>
+                                    </div>
+                                    <div class="text-right space-y-1">
+                                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Aggregate GST</label>
+                                        <p class="text-2xl font-bold text-slate-700 dark:text-white/80" id="detail-tax">₹0.00</p>
+                                    </div>
+                                </div>
+                                <div class="absolute -right-8 -bottom-8 w-32 h-32 bg-teal-500/10 rounded-full blur-3xl"></div>
+                            </div>
+
+                            <div class="p-8 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-slate-200 dark:border-white/10">
+                                <h4 class="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] mb-8 border-b border-slate-200 dark:border-white/10 pb-3">Financial Architecture</h4>
+                                <div class="grid grid-cols-2 gap-y-5 text-sm">
+                                    <span class="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-widest">Taxable Base:</span>
+                                    <span class="text-right font-black text-slate-900 dark:text-white" id="detail-taxable">₹0.00</span>
+                                    
+                                    <span class="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-widest">Non-Taxable:</span>
+                                    <span class="text-right font-black text-slate-900 dark:text-white" id="detail-non-taxable">₹0.00</span>
+                                    
+                                    <span class="text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-widest">Deductions:</span>
+                                    <span class="text-right font-black text-rose-500" id="detail-discount">-₹0.00</span>
+                                    
+                                    <div class="col-span-2 border-t border-slate-200 dark:border-white/10 my-3"></div>
+                                    
+                                    <span class="text-slate-400 text-xs font-medium">CGST Contribution:</span>
+                                    <span class="text-right text-slate-600 dark:text-white/70 text-xs font-bold" id="detail-cgst">₹0.00</span>
+                                    
+                                    <span class="text-slate-400 text-xs font-medium">SGST Contribution:</span>
+                                    <span class="text-right text-slate-600 dark:text-white/70 text-xs font-bold" id="detail-sgst">₹0.00</span>
+                                    
+                                    <span class="text-slate-400 text-xs font-medium">IGST Contribution:</span>
+                                    <span class="text-right text-slate-600 dark:text-white/70 text-xs font-bold" id="detail-igst">₹0.00</span>
+                                    
+                                    <div class="col-span-2 border-t border-slate-200 dark:border-white/10 my-3"></div>
+                                    
+                                    <span class="text-emerald-600 dark:text-emerald-400 font-black uppercase text-[10px] tracking-widest">TDS Deductible (Net):</span>
+                                    <span class="text-right font-black text-rose-600 dark:text-rose-500" id="detail-tds-applicable">₹0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="space-y-8">
+                            <div id="payment-info-box" class="hidden p-8 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-[2.5rem] border border-emerald-500/20 shadow-lg">
+                                <div class="flex items-center justify-between mb-6">
+                                    <label class="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Settlement Log</label>
+                                    <div class="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20">
+                                        <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-6">
+                                    <div class="space-y-1">
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Reference ID</p>
+                                        <p id="detail-pay-ref" class="text-sm font-black text-slate-900 dark:text-white truncate"></p>
+                                    </div>
+                                    <div class="space-y-1 text-right">
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Processed On</p>
+                                        <p id="detail-pay-date" class="text-sm font-black text-slate-900 dark:text-white"></p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Released Amt</p>
+                                        <p id="detail-paid-amount" class="text-lg font-black text-emerald-600 dark:text-emerald-500"></p>
+                                    </div>
+                                    <div id="detail-tds-wrapper" class="space-y-1 text-right hidden">
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">TDS Retained</p>
+                                        <p id="detail-tds-amount" class="text-lg font-black text-rose-600 dark:text-rose-500"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <label class="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Internal Protocol Documentation</label>
+                                <textarea id="detail-internal-remarks" placeholder="Enter administrative observations..." 
+                                    class="w-full bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[2rem] p-6 text-sm text-slate-700 dark:text-slate-300 focus:border-teal-500/50 outline-none transition-all min-h-[160px] shadow-sm"></textarea>
+                            </div>
+
+                            <div id="detail-actions" class="p-2 space-y-5">
+                                <a id="detail-view-file" href="javascript:void(0)"
+                                    class="w-full block bg-slate-100 dark:bg-white/5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-center text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-all border border-slate-200 dark:border-white/5 shadow-sm">
+                                    Visual Artifact Review
+                                </a>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button id="detail-approve-btn" class="bg-gradient-to-br from-emerald-500 to-teal-600 py-5 rounded-2xl font-black text-[11px] text-white uppercase tracking-[0.2em] shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all">Authorize</button>
+                                    <button id="detail-reject-btn" class="bg-gradient-to-br from-rose-500 to-red-600 py-5 rounded-2xl font-black text-[11px] text-white uppercase tracking-[0.2em] shadow-lg shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all">Decline</button>
+                                    <button id="detail-paid-btn" class="col-span-2 bg-[#22C55E] py-5 rounded-2xl font-black text-[11px] text-white uppercase tracking-[0.2em] hidden shadow-lg shadow-green-500/20">Finalize Transaction</button>
+                                    <button id="detail-review-btn" class="bg-sky-500 py-5 rounded-2xl font-black text-[11px] text-white uppercase tracking-[0.2em] shadow-lg shadow-sky-500/20">Audit Review</button>
+                                    <button id="detail-clarification-btn" class="bg-amber-500 py-5 rounded-2xl font-black text-[11px] text-white uppercase tracking-[0.2em] shadow-lg shadow-amber-500/20">Request Data</button>
+                                    <button id="detail-hold-btn" class="col-span-2 bg-slate-700 py-5 rounded-2xl font-black text-[11px] text-white uppercase tracking-[0.2em] shadow-lg shadow-slate-950/40">Defer Processing</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </div>
+    </div>
+
+
+
+        <script>
+            // ============ SECURITY: Auth Wrapper & Role Config ============
+            const CURRENT_ROLE = localStorage.getItem('user_role') || 'user';
+
+            function authFetch(url, options = {}) {
+                const token = localStorage.getItem('auth_token');
+                return fetch(url, {
+                    ...options,
+                    headers: {
+                        ...(options.headers || {}),
+                        'Authorization': token || ''
+                    }
+                });
+            }
+
+            function enforceRoleUI() {
+                const isFinance = CURRENT_ROLE === 'finance';
+                const isAdmin = ['admin', 'superadmin'].includes(CURRENT_ROLE);
+
+                // Finance cannot: Upload, Approve, Reject, Change Category
+                if (isFinance) {
+                    // Hide upload button in header
+                    const uploadBtn = document.getElementById('header-upload-btn');
+                    if (uploadBtn) uploadBtn.style.display = 'none';
+
+                    // Hide detail action buttons (approve/reject)
+                    const detailActions = document.getElementById('detail-actions');
+                    if (detailActions) {
+                        const approveBtn = document.getElementById('detail-approve-btn');
+                        const rejectBtn = document.getElementById('detail-reject-btn');
+                        if (approveBtn) approveBtn.style.display = 'none';
+                        if (rejectBtn) rejectBtn.style.display = 'none';
+                    }
+                }
+
+            }
+
+
+
+            // ============ Dashboard Stats ============
+            async function loadDashboardStats() {
+                try {
+                    const response = await authFetch('/api/admin/stats');
+                    const result = await response.json();
+                    if (result.success) {
+                        const stats = result.data;
+                        document.getElementById('stat-pending-amount').textContent = '₹' + stats.pending_amount.toLocaleString();
+                        document.getElementById('stat-pending-tax').textContent = '₹' + stats.pending_tax.toLocaleString();
+                        document.getElementById('stat-active-vendors').textContent = stats.active_vendors;
+
+                        // Simple progress bar logic
+                        const progress = stats.pending_amount > 0 ? 70 : 0;
+                        document.getElementById('stat-pending-progress').style.width = progress + '%';
+                    }
+                } catch (err) {
+                    console.error("Failed to load dashboard stats", err);
+                }
+            }
+
+            // Fetch invoices from API
+            async function loadInvoices() {
+                loadDashboardStats(); // Refresh stats too
+                const response = await authFetch('/api/admin/pending-invoices');
+                const data = await response.json();
+                document.getElementById('pending-count').textContent = data.length + ' Actionable';
+                return data;
+            }
+
+            // Approve invoice
+            async function approveInvoice(invoiceNo, email, mobile, amount) {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Processing...';
+                btn.disabled = true;
+
+                try {
+                    // Update status
+                    const res = await authFetch('/api/invoices/update-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ invoice_no: invoiceNo, status: 'approved' })
+                    });
+
+                    if (!res.ok) throw new Error("Failed to update status");
+
+                    if (!res.ok) throw new Error("Failed to update status");
+
+                    // Notification is handled by backend
+
+
+                    showToast(`Invoice ${invoiceNo} approved successfully`, 'success');
+
+                    btn.textContent = '✓ Approved';
+                    btn.classList.remove('bg-emerald-500/20', 'text-emerald-400');
+                    btn.classList.add('bg-emerald-500', 'text-white');
+
+                    // Reload after delay
+                    setTimeout(() => location.reload(), 1500);
+                } catch (err) {
+                    console.error(err);
+                    const errorMsg = err.detail || err.message || `Failed to approve invoice ${invoiceNo}`;
+                    showToast(errorMsg, 'error');
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            }
+
+            // Open reject modal
+            function openRejectModal(invoiceNo, email, mobile) {
+                document.getElementById('reject-invoice-no').value = invoiceNo;
+                document.getElementById('reject-email').value = email;
+                document.getElementById('reject-mobile').value = mobile;
+                document.getElementById('reject-modal').classList.remove('hidden');
+            }
+
+            function closeRejectModal() {
+                document.getElementById('reject-modal').classList.add('hidden');
+            }
+
+            async function confirmReject() {
+                const invoiceNo = document.getElementById('reject-invoice-no').value;
+                const email = document.getElementById('reject-email').value;
+                const mobile = document.getElementById('reject-mobile').value;
+                const reason = document.getElementById('reject-reason').value;
+
+                if (!reason) {
+                    showToast("Please provide a rejection reason", "error");
+                    return;
+                }
+
+                try {
+                    // Update status
+                    const res = await authFetch('/api/invoices/update-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ invoice_no: invoiceNo, status: 'rejected', reason: reason })
+                    });
+
+                    if (!res.ok) throw new Error("Failed to update status");
+
+                    // Notification is handled by backend
+
+                    showToast(`Invoice ${invoiceNo} rejected`, 'success');
+                    closeRejectModal();
+                    setTimeout(() => location.reload(), 1500);
+                } catch (err) {
+                    console.error(err);
+                    const errorMsg = err.detail || err.message || "Failed to reject invoice";
+                    showToast(errorMsg, "error");
+                }
+            }
+
+            // Approval Modal Logic
+            let currentApproveData = null;
+
+            async function openApproveModal(invoiceId, invoiceNo, email, mobile, amount) {
+                // Simplified: All approvals are "final" now.
+
+                // Fetch latest details to get TDS info
+                try {
+                    const res = await authFetch(`/api/invoices/detail?invoice_id=${invoiceId}`);
+                    const data = await res.json();
+
+                    const amt = parseFloat(String(amount).replace(/[₹,]/g, '')) || 0;
+                    let tdsAmt = 0;
+
+                    if (data.vendor_tds_applicable) {
+                        const rate = parseFloat(data.vendor_tds_rate || 0);
+                        tdsAmt = (amt * rate) / 100;
+                    }
+
+                    const netPayable = amt - tdsAmt;
+
+                    document.getElementById('approve-amount-display').textContent = amt.toFixed(2);
+                    document.getElementById('approve-tds-val').value = tdsAmt.toFixed(2);
+                    document.getElementById('approve-net-display').textContent = netPayable.toFixed(2);
+
+                    currentApproveData = { invoiceId, invoiceNo, email, mobile, amount: amt };
+                    document.getElementById('approve-invoice-no').value = invoiceNo;
+                    document.getElementById('approve-modal').classList.remove('hidden');
+                } catch (err) {
+                    console.error(err);
+                    const errorMsg = err.detail || err.message || "Failed to fetch invoice details";
+                    showToast(errorMsg, "error");
+                }
+            }
+
+            function updateNetPayable() {
+                const amt = currentApproveData ? currentApproveData.amount : 0;
+                const tds = parseFloat(document.getElementById('approve-tds-val').value) || 0;
+                const net = amt - tds;
+                document.getElementById('approve-net-display').textContent = net.toFixed(2);
+            }
+
+            function closeApproveModal() {
+                document.getElementById('approve-modal').classList.add('hidden');
+            }
+
+            async function confirmApprove() {
+                const { invoiceId, invoiceNo, email, mobile, amount } = currentApproveData;
+                const tdsAmount = document.getElementById('approve-tds-val').value;
+                const reason = document.getElementById('approve-comment').value;
+
+                try {
+                    const res = await authFetch('/api/invoices/update-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            invoice_no: invoiceNo,
+                            status: 'approved',
+                            tds_amount: tdsAmount,
+                            reason: reason
+                        })
+                    });
+
+                    if (!res.ok) throw new Error("Failed to update status");
+
+                    // Notification is handled by backend
+
+                    showToast(`Invoice ${invoiceNo} approved successfully`, 'success');
+                    closeApproveModal();
+                    setTimeout(() => location.reload(), 1500);
+
+                } catch (err) {
+                    const errorMsg = err.detail || err.message || "Approval failed";
+                    showToast(errorMsg, "error");
+                }
+            }
+
+            async function directApprove(invoiceNo, email, mobile, amount) {
+                try {
+                    const res = await authFetch('/api/invoices/update-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ invoice_no: invoiceNo, status: 'approved' })
+                    });
+
+                    if (!res.ok) throw new Error("Failed to update status");
+                    showToast(`Level Approved`, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } catch (err) {
+                    const errorMsg = err.detail || err.message || "Approval failed";
+                    showToast(errorMsg, "error");
+                }
+            }
+
+            // Payment Modal Logic
+            let currentInvoiceAmount = 0;
+            
+            async function openPayModal(invoiceId, invoiceNo) {
+                document.getElementById('pay-invoice-no').value = invoiceNo;
+                
+                // Set today's date in YYYY-MM-DD format
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                document.getElementById('pay-date').value = `${yyyy}-${mm}-${dd}`;
+                document.getElementById('pay-date').setAttribute('max', `${yyyy}-${mm}-${dd}`);
+                
+                // Clear previous values
+                document.getElementById('pay-ref').value = '';
+                document.getElementById('pay-remarks').value = '';
+                document.getElementById('pay-tds').value = '';
+                document.getElementById('pay-amount').value = '';
+
+                // Fetch details to pre-fill TDS and calculate paid amount
+                try {
+                    const res = await authFetch(`/api/invoices/detail?invoice_id=${invoiceId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        currentInvoiceAmount = data.amount || 0;
+                        
+                        let tdsAmt = 0;
+                        if (data.vendor_tds_applicable && data.vendor_tds_rate) {
+                             const rate = parseFloat(data.vendor_tds_rate);
+                             tdsAmt = (currentInvoiceAmount * rate) / 100;
+                             document.getElementById('pay-tds').value = tdsAmt.toFixed(2);
+                        }
+                        
+                        // Calculate and set paid amount (Invoice - TDS)
+                        const paidAmt = currentInvoiceAmount - tdsAmt;
+                        document.getElementById('pay-amount').value = paidAmt.toFixed(2);
+                    }
+                } catch(e) {
+                    console.warn("Failed to fetch invoice details for TDS pre-fill", e);
+                }
+
+                document.getElementById('pay-modal').classList.remove('hidden');
+            }
+            
+            // Update paid amount when TDS changes
+            function updatePaidAmount() {
+                const tds = parseFloat(document.getElementById('pay-tds').value) || 0;
+                const paidAmt = currentInvoiceAmount - tds;
+                document.getElementById('pay-amount').value = paidAmt.toFixed(2);
+            }
+            
+            // Attach event listener to TDS field
+            document.addEventListener('DOMContentLoaded', () => {
+                const tdsField = document.getElementById('pay-tds');
+                if (tdsField) {
+                    tdsField.addEventListener('input', updatePaidAmount);
+                }
+            });
+
+            function closePayModal() {
+                document.getElementById('pay-modal').classList.add('hidden');
+            }
+
+            async function confirmPay() {
+                const invoiceNo = document.getElementById('pay-invoice-no').value;
+                const date = document.getElementById('pay-date').value;
+                const ref = document.getElementById('pay-ref').value;
+                const remarks = document.getElementById('pay-remarks').value;
+                const tds = document.getElementById('pay-tds').value;
+                const paidAmount = document.getElementById('pay-amount').value;
+
+                // Validate Payment Date
+                if (!date) {
+                    showToast("Payment Date is required", "error");
+                    return;
+                }
+
+                // Check if date is not in the future
+                const selectedDate = new Date(date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                if (selectedDate > today) {
+                    showToast("Payment Date cannot be in the future", "error");
+                    return;
+                }
+
+                // Validate Payment Reference
+                if (!ref) {
+                    showToast("Payment Reference is required", "error");
+                    return;
+                }
+                
+                // Validate Paid Amount
+                if (!paidAmount || parseFloat(paidAmount) < 0) {
+                     showToast("Valid Paid Amount is required", "error");
+                     return;
+                }
+
+                try {
+                    const res = await authFetch('/api/invoices/update-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            invoice_no: invoiceNo,
+                            payment_date: date,
+                            payment_reference: ref,
+                            payment_remarks: remarks,
+                            tds_amount: tds, // Optional
+                            paid_amount: paidAmount
+                        })
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(err.detail || "Payment update failed");
+                    }
+
+                    showToast("Payment processed successfully", "success");
+                    closePayModal();
+                    setTimeout(() => location.reload(), 1500);
+
+                } catch (err) {
+                    showToast(err.message, "error");
+                }
+            }
+
+            async function updateStatus(invoiceNo, newStatus) {
+                const reason = prompt(`Optional message for the VENDOR for status ${newStatus.replace('_', ' ')}:`);
+                if (reason === null) return; // Cancelled
+                
+                const internalRemarks = document.getElementById('detail-internal-remarks').value;
+
+                try {
+                    const res = await authFetch('/api/invoices/update-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                        invoice_no: invoiceNo, 
+                        status: newStatus, 
+                        reason: reason,
+                        internal_remarks: internalRemarks 
+                    })
+                    });
+                    if (!res.ok) throw new Error("Failed to update status");
+                    showToast(`Invoice moved to ${newStatus.replace(/_/g, ' ')}`, 'success');
+                    document.getElementById('detail-modal').classList.add('hidden');
+                    setTimeout(() => location.reload(), 1500);
+                } catch (err) {
+                    const errorMsg = err.detail || err.message || "Failed to update status";
+                    showToast(errorMsg, "error");
+                }
+            }
+
+            async function downloadInvoicesCSV() {
+                try {
+                    const res = await authFetch('/api/reports/invoices-csv');
+                    if (!res.ok) throw new Error("Failed to generate report");
+
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `invoices_export_${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    showToast("Report exported successfully", "success");
+                } catch (err) {
+                    console.error(err);
+                    const errorMsg = err.detail || err.message || "Failed to export report";
+                    showToast(errorMsg, "error");
+                }
+            }
+
+            async function viewOriginalFile(invoiceId) {
+                try {
+                    const res = await authFetch(`/api/invoices/view-original?invoice_id=${invoiceId}`);
+                    if (!res.ok) {
+                         const err = await res.json().catch(() => ({}));
+                         throw new Error(err.detail || "Failed to load file");
+                    }
+                    
+                    // Get filename from header or default
+                    const contentDisposition = res.headers.get('Content-Disposition');
+                    let filename = 'invoice_file';
+                    if (contentDisposition) {
+                        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+                        if (match && match[1]) filename = match[1];
+                    }
+
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    
+                    // open in new tab
+                    const win = window.open(url, '_blank');
+                    if (!win) {
+                        showToast("Please allow popups to view the file", "warning");
+                    }
+                    
+                    // Note: URL.revokeObjectURL(url) should ideally be called when the window is closed,
+                    // but we can't easily detect that. Browsers handle it mostly fine.
+                } catch (err) {
+                    showToast(err.message, "error");
+                }
+            }
+
+            async function viewInvoiceDetail(invoiceId) {
+                try {
+                    const response = await authFetch(`/api/invoices/detail?invoice_id=${invoiceId}`);
+                    
+                    // Check response status
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.detail || `Server error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Validate required fields
+                    if (!data.invoice_no) {
+                        throw new Error("Invalid invoice data received");
+                    }
+
+                    document.getElementById('detail-invoice-no-title').textContent = data.invoice_no || 'N/A';
+                    document.getElementById('detail-vendor-name').textContent = data.vendor_name || 'Unknown';
+                    
+                    // Format Date nicely
+                    const dateVal = data.date || data.invoice_date;
+                    if (dateVal && dateVal !== 'N/A') {
+                        const dateObj = new Date(dateVal);
+                        document.getElementById('detail-date').textContent = dateObj.toLocaleDateString('en-US', {
+                            year: 'numeric', month: 'short', day: 'numeric'
+                        });
+                    } else {
+                        document.getElementById('detail-date').textContent = 'Not Extracted';
+                    }
+
+                    document.getElementById('detail-category').textContent = data.category || 'Standard';
+                    document.getElementById('detail-type').textContent = data.is_handwritten ? 'Physical / Scanned' : 'Native Digital';
+                    document.getElementById('detail-internal-remarks').value = data.internal_remarks || '';
+
+                    const statusEl = document.getElementById('detail-status');
+                    const statusDot = document.getElementById('detail-status-dot');
+                    const s = (data.status || 'pending').toLowerCase();
+                    statusEl.textContent = data.status.replace(/_/g, ' ');
+
+                    // Detail status colors
+                    let dotCls = 'bg-amber-500';
+                    if (s.includes('paid')) dotCls = 'bg-[#22C55E]';
+                    if (s.includes('approved')) dotCls = 'bg-[#10B981]';
+                    if (s.includes('rejected')) dotCls = 'bg-[#EF4444]';
+                    if (s.includes('review')) dotCls = 'bg-[#38BDF8]';
+                    if (s.includes('pending') || s.includes('clarification')) dotCls = 'bg-[#F59E0B]';
+                    if (s.includes('hold')) dotCls = 'bg-slate-500';
+
+                    statusDot.className = `w-2 h-2 rounded-full ${dotCls}`;
+                    document.getElementById('detail-amount').textContent = '₹' + (data.amount || 0).toLocaleString();
+                    document.getElementById('detail-tax').textContent = '₹' + (data.tax_amount || 0).toLocaleString();
+
+                    // Set detailed breakdown
+                    document.getElementById('detail-taxable').textContent = `₹${(data.taxable_value || 0).toLocaleString()}`;
+                    document.getElementById('detail-non-taxable').textContent = `₹${(data.non_taxable_value || 0).toLocaleString()}`;
+                    document.getElementById('detail-discount').textContent = `-₹${(data.discount || 0).toLocaleString()}`;
+                    document.getElementById('detail-cgst').textContent = `₹${(data.cgst || 0).toLocaleString()}`;
+                    document.getElementById('detail-sgst').textContent = `₹${(data.sgst || 0).toLocaleString()}`;
+                    document.getElementById('detail-igst').textContent = `₹${(data.igst || 0).toLocaleString()}`;
+
+                    // Calculate and set TDS preview
+                    let tdsPreview = 0;
+                    if (data.tds_amount && data.tds_amount > 0) {
+                        tdsPreview = data.tds_amount;
+                    } else if (data.tds_rate && data.tds_rate > 0) {
+                        tdsPreview = (data.amount * data.tds_rate) / 100;
+                    }
+                    document.getElementById('detail-tds-applicable').textContent = `-₹${tdsPreview.toLocaleString()}`;
+
+
+                    // Payment Info Logic
+                    const payBox = document.getElementById('payment-info-box');
+                    if (data.payment_reference) {
+                        payBox.classList.remove('hidden');
+                        document.getElementById('detail-pay-ref').textContent = data.payment_reference;
+                        document.getElementById('detail-pay-date').textContent = data.payment_date || 'N/A';
+                        document.getElementById('detail-pay-remarks').textContent = data.payment_remarks || '';
+                        
+                        // Paid & TDS
+                        document.getElementById('detail-paid-amount').textContent = '₹' + (data.paid_amount || data.amount || 0).toLocaleString();
+                        
+                        if (data.tds_deducted && data.tds_deducted > 0) {
+                             document.getElementById('detail-tds-wrapper').classList.remove('hidden');
+                             document.getElementById('detail-tds-amount').textContent = '₹' + data.tds_deducted.toLocaleString();
+                        } else {
+                             document.getElementById('detail-tds-wrapper').classList.add('hidden');
+                        }
+                    } else {
+                        payBox.classList.add('hidden');
+                    }
+
+                    const viewFileBtn = document.getElementById('detail-view-file');
+                    viewFileBtn.removeAttribute('href');
+                    viewFileBtn.removeAttribute('target');
+                    viewFileBtn.onclick = (e) => {
+                        e.preventDefault();
+                        viewOriginalFile(invoiceId);
+                    };
+
+
+
+                    const approveBtn = document.getElementById('detail-approve-btn');
+                    const rejectBtn = document.getElementById('detail-reject-btn');
+                    const paidBtn = document.getElementById('detail-paid-btn');
+                    const reviewBtn = document.getElementById('detail-review-btn');
+                    const clarifyBtn = document.getElementById('detail-clarification-btn');
+                    const holdBtn = document.getElementById('detail-hold-btn');
+
+                    // Dynamic Button Visibility
+                    const status = (data.status || 'pending').trim().toLowerCase();
+                    if (status === 'paid' || status === 'rejected') {
+                        approveBtn.classList.add('hidden');
+                        paidBtn.classList.add('hidden');
+                        rejectBtn.classList.add('hidden');
+                        reviewBtn.classList.add('hidden');
+                        clarifyBtn.classList.add('hidden');
+                        holdBtn.classList.add('hidden');
+                    } else if (status === 'approved') {
+                        approveBtn.classList.add('hidden');
+                        paidBtn.classList.remove('hidden');
+                        rejectBtn.classList.remove('hidden');
+                        reviewBtn.classList.remove('hidden');
+                        clarifyBtn.classList.remove('hidden');
+                        holdBtn.classList.remove('hidden');
+                    } else {
+                        approveBtn.classList.remove('hidden');
+                        paidBtn.classList.add('hidden');
+                        rejectBtn.classList.remove('hidden');
+                        reviewBtn.classList.remove('hidden');
+                        clarifyBtn.classList.remove('hidden');
+                        holdBtn.classList.remove('hidden');
+                    }
+
+                    // Setup Action Listeners
+                    let inv = null;
+                    try {
+                        // Fetch the pending list to get email/mobile for modals
+                        const pendingData = await authFetch('/api/admin/pending-invoices').then(r => r.json());
+                        inv = pendingData.find(i => i.invoice_no === data.invoice_no);
+                    } catch (e) {
+                        console.warn("Could not fetch pending list for actions", e);
+                    }
+
+                    if (inv) {
+                        approveBtn.onclick = () => {
+                            document.getElementById('detail-modal').classList.add('hidden');
+                            openApproveModal(inv.id, inv.invoice_no, inv.email, inv.mobile, inv.amount);
+                        };
+                        rejectBtn.onclick = () => {
+                            document.getElementById('detail-modal').classList.add('hidden');
+                            openRejectModal(inv.invoice_no, inv.email, inv.mobile);
+                        };
+                    } else {
+                        // Fallback: If not found in pending (e.g. searching/filtering), 
+                        // we can still allow approve/reject but fields might be empty in modal.
+                        approveBtn.onclick = () => {
+                            document.getElementById('detail-modal').classList.add('hidden');
+                            openApproveModal(invoiceId, data.invoice_no, '', '', data.amount);
+                        };
+                        rejectBtn.onclick = () => {
+                            document.getElementById('detail-modal').classList.add('hidden');
+                            openRejectModal(data.invoice_no, '', '');
+                        };
+                    }
+
+                    // Paid button listener only needs invoiceNo
+                    paidBtn.onclick = () => {
+                        document.getElementById('detail-modal').classList.add('hidden');
+                        openPayModal(invoiceId, data.invoice_no);
+                    };
+
+                    // New intermediate status listeners
+                    reviewBtn.onclick = () => updateStatus(data.invoice_no, 'under_review');
+                    clarifyBtn.onclick = () => updateStatus(data.invoice_no, 'pending_clarification');
+                    holdBtn.onclick = () => updateStatus(data.invoice_no, 'hold');
+
+                    document.getElementById('detail-modal').classList.remove('hidden');
+                } catch (err) {
+                    console.error("Failed to load invoice details", err);
+                    showToast(`Failed to load invoice details: ${err.message}`, "error");
+                }
+            }
+
+            async function changeCategory(invoiceNo, newCategory) {
+                try {
+                    const res = await fetch('/api/invoices/recategorise', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('auth_token') || '' },
+                        body: JSON.stringify({ invoice_no: invoiceNo, category: newCategory })
+                    });
+                    if (res.ok) {
+                        showToast(`Category updated to ${newCategory}`, 'success');
+                        setTimeout(() => grid.forceRender(), 1000);
+                    }
+                } catch (err) {
+                    const errorMsg = err.detail || err.message || "Failed to update category";
+                    showToast(errorMsg, "error");
+                }
+            }
+
+            function exportInvoiceExcel(invoiceNo) {
+                showToast('Generating Excel Report...', 'info');
+                window.location.href = `/api/reports/invoice/${invoiceNo}/excel`;
+            }
+
+
+            async function loadFilterVendors() {
+                try {
+                    const res = await authFetch('/api/admin/vendors');
+                    const vendors = await res.json();
+                    const select = document.getElementById('filter-vendor');
+                    // Keep first option
+                    select.innerHTML = '<option value="">All Vendors</option>' + 
+                        vendors.map(v => `<option value="${v.id}">${v.company_name}</option>`).join('');
+                } catch (e) { console.error("Filter vendors load failed", e); }
+            }
+
+            function applyFilters() {
+                const start = document.getElementById('filter-start-date').value;
+                const end = document.getElementById('filter-end-date').value;
+                const vendorId = document.getElementById('filter-vendor').value;
+
+                if (start && end && start > end) {
+                    showToast("Start Date cannot be after End Date", "error");
+                    return;
+                }
+
+                let url = '/api/admin/pending-invoices';
+                const params = [];
+                if (start) params.push(`start_date=${start}`);
+                if (end) params.push(`end_date=${end}`);
+                if (vendorId) params.push(`vendor_id=${vendorId}`);
+
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
+                }
+
+                // Reuse the same mapping logic
+                grid.updateConfig({
+                    server: {
+                        url: url,
+                        headers: { 'Authorization': localStorage.getItem('auth_token') || '' },
+                        then: data => data.map(inv => [
+                            inv.vendor_name,
+                            inv.invoice_no,
+                            inv.invoice_date,
+                            inv.submitted_date,
+                            inv.category || 'Basic',
+                            inv.is_handwritten ? 'Handwritten' : 'Digital',
+                            '₹' + (inv.amount || 0).toLocaleString(),
+                            inv.status.replace(/_/g, ' '),
+                            inv.id,
+                            inv.id,
+                            inv.email,
+                            inv.mobile
+                        ])
+                    }
+                }).forceRender();
+            }
+
+            // Initialize Grid.js
+            const isFinanceRole = CURRENT_ROLE === 'finance';
+            let grid;
+
+            document.addEventListener('DOMContentLoaded', () => {
+                // Set default date range (Last 30 days)
+                const today = new Date();
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+
+                const formatDate = (date) => date.toISOString().split('T')[0];
+
+                const startInput = document.getElementById('filter-start-date');
+                const endInput = document.getElementById('filter-end-date');
+
+                if (startInput && endInput) {
+                    startInput.value = formatDate(thirtyDaysAgo);
+                    endInput.value = formatDate(today);
+                }
+
+                grid = new gridjs.Grid({
+                    columns: [
+                        "Vendor", // 0
+                        "Invoice #", // 1
+                        {
+                            name: "Inv. Date",
+                            formatter: (cell) => gridjs.html(`<span class="text-[10px] text-slate-400 font-mono">${cell}</span>`)
+                        }, // 2
+                        {
+                            name: "Submitted",
+                            formatter: (cell) => gridjs.html(`<span class="text-[10px] text-slate-400 font-mono">${cell}</span>`)
+                        }, // 3
+                        {
+                            name: "Category", // 4
+                            formatter: (cell, row) => {
+                                // Finance cannot change category
+                                if (isFinanceRole) {
+                                    return gridjs.html(`<span class="text-xs">${cell || 'Basic'}</span>`);
+                                }
+                                return gridjs.html(`
+                            <select onchange="changeCategory('${row.cells[1].data}', this.value)" class="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[10px] border border-white/10 rounded px-1 py-0.5 outline-none focus:border-teal-500">
+                                <option value="Basic" ${cell === 'Basic' ? 'selected' : ''}>Basic</option>
+                                <option value="Intermediate" ${cell === 'Intermediate' ? 'selected' : ''}>Intermediate</option>
+                                <option value="Premium" ${cell === 'Premium' ? 'selected' : ''}>Premium</option>
+                            </select>
+                        `);
+                            }
+                        },
+                        {
+                            name: "Type", // 5
+                            formatter: (cell) => gridjs.html(`<span class="px-2 py-0.5 rounded text-[10px] font-bold ${cell === 'Handwritten' ? 'bg-amber-500/20 text-amber-500' : 'bg-teal-500/20 text-teal-600 dark:text-teal-400'}">${cell}</span>`)
+                        },
+                        {
+                            name: "Base Amount", // 6 (Was Amount)
+                            formatter: (cell) => gridjs.html(`<span class="font-mono text-slate-600 dark:text-slate-300 text-xs">₹${(cell || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`)
+                        },
+                        {
+                            name: "Tax (GST)", // 7
+                            formatter: (cell) => gridjs.html(`<span class="font-mono text-slate-600 dark:text-slate-300 text-xs">₹${(cell || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`)
+                        },
+                        {
+                            name: "Invoice Value", // 8
+                            formatter: (cell) => gridjs.html(`<span class="font-bold text-slate-800 dark:text-slate-200 text-xs">₹${(cell || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`)
+                        },
+                        {
+                            name: "Status", // 9 (Shifted)
+                            formatter: (cell) => {
+                                const s = (cell || '').toLowerCase();
+                                let cls = 'bg-amber-500/20 text-amber-600 dark:text-amber-400'; // Default
+                                if (s.includes('paid')) cls = 'bg-[#22C55E]/20 text-[#22C55E]';
+                                if (s.includes('approved')) cls = 'bg-[#10B981]/20 text-[#10B981]';
+                                if (s.includes('rejected')) cls = 'bg-[#EF4444]/20 text-[#EF4444]';
+                                if (s.includes('review')) cls = 'bg-[#38BDF8]/20 text-[#38BDF8]';
+                                if (s.includes('pending') || s.includes('clarification')) cls = 'bg-[#F59E0B]/20 text-[#F59E0B]';
+                                if (s.includes('hold')) cls = 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+                                return gridjs.html(`<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${cls}">${cell}</span>`);
+                            }
+                        },
+                        {
+                            name: 'id',
+                            hidden: true
+                        },
+                        {
+                            name: "Actions", // 11
+                            formatter: (cell, row) => {
+                                const status = row.cells[9].data; // Status column content (visible index)
+                                const isAdmin = ['finance', 'admin', 'superadmin'].includes(CURRENT_ROLE);
+                                const invoiceId = cell;
+                                const invoiceNo = row.cells[1].data;
+                                const email = row.cells[12].data;
+                                const mobile = row.cells[13].data;
+                                const amount = row.cells[8].data; // Total Invoice Value
+
+                                if (isAdmin) {
+                                    let buttons = `
+                                <div class="flex space-x-2">
+                                    <button onclick="viewInvoiceDetail(${invoiceId})" 
+                                        class="px-3 py-1 bg-sky-500/20 text-sky-400 text-xs font-bold rounded hover:bg-sky-500/30">
+                                        View
+                                    </button>
+                                `;
+
+                                    // If Approved, show PAY button
+                                    if (status.toLowerCase().includes('approved')) {
+                                        buttons += `
+                                    <button onclick="openPayModal(${invoiceId}, '${invoiceNo}')" 
+                                        class="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded hover:bg-emerald-500/30">
+                                        Pay
+                                    </button>`;
+                                    }
+                                    // If Pending (or Under Review), show APPROVE/REJECT
+                                    else if (!status.toLowerCase().includes('paid') && !status.toLowerCase().includes('rejected')) {
+                                        buttons += `
+                                    <button onclick="openApproveModal(${invoiceId}, '${invoiceNo}', '${email}', '${mobile}', '${amount}')" 
+                                        class="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded hover:bg-emerald-500/30">
+                                        Approve
+                                    </button>
+                                    <button onclick="openRejectModal('${invoiceNo}', '${email}', '${mobile}')" 
+                                        class="px-3 py-1 bg-rose-500/20 text-rose-400 text-xs font-bold rounded hover:bg-rose-500/30">
+                                        Reject
+                                    </button>`;
+                                    }
+
+                                    buttons += `</div>`;
+                                    return gridjs.html(buttons);
+                                }
+                                return gridjs.html('');
+                            }
+                        },
+                        { name: 'email', hidden: true },  // 10
+                        { name: 'mobile', hidden: true }  // 11
+                    ],
+                    server: {
+                        url: `/api/admin/pending-invoices?start_date=${formatDate(thirtyDaysAgo)}&end_date=${formatDate(today)}`,
+                        headers: {
+                            'Authorization': localStorage.getItem('auth_token') || ''
+                        },
+                        then: data => data.map(inv => [
+                            inv.vendor_name,                             // 0
+                            inv.invoice_no,                               // 1
+                            inv.invoice_date,                             // 2
+                            inv.submitted_date,                           // 3
+                            inv.category || 'Basic',                      // 4
+                            inv.is_handwritten ? 'Handwritten' : 'Digital', // 5
+                            inv.base_amount,                              // 6 (Base)
+                            inv.tax_amount,                               // 7 (Tax)
+                            inv.total_amount,                             // 8 (Total)
+                            inv.status.replace(/_/g, ' '),               // 9 (Status)
+                            inv.id,                                      // 10 (id column)
+                            inv.id,                                      // 11 (Actions)
+                            inv.email,                                   // 12
+                            inv.mobile                                   // 13
+                        ])
+                    },
+                    search: true,
+                    sort: true,
+                    className: {
+                        td: 'text-slate-700 dark:text-slate-200 text-sm py-3 border-b border-slate-200 dark:border-white/5',
+                        th: 'text-slate-500 dark:text-slate-400 font-bold uppercase text-[10px] bg-slate-50 dark:bg-white/5 border-b border-slate-200 dark:border-white/5',
+                        table: 'w-full'
+                    },
+                    style: {
+                        table: { 'background-color': 'transparent' },
+                        th: { 'background-color': 'transparent' },
+                        td: { 'background-color': 'transparent' }
+                    }
+                }).render(document.getElementById("admin-table-wrapper"));
+            });
+
+            // Admin Upload Functions
+            // The previous openAdminUploadModal and its form are replaced by the new openUploadModal and upload-form.
+            // The button in the header now calls openUploadModal().
+
+            // Update count
+            loadInvoices();
+
+            // Enforce role-based UI on load
+            enforceRoleUI();
+        </script>
+
+        <script>
+            // Initialize
+            // Initialize
+            loadDashboardStats(); // Initial load for stats
+            loadInvoices(); // Initial load for pending invoices and grid
+            loadFilterVendors(); // Initial load for vendor filter
+
+            // Populate Vendor Dropdown for Upload Modal
+            async function loadVendorOptions() {
+                try {
+                    const res = await authFetch('/api/admin/vendors');
+                    const vendors = await res.json();
+                    const select = document.getElementById('upload_vendor_id');
+                    select.innerHTML = '<option value="">Select Vendor...</option>' +
+                        vendors.map(v => `<option value="${v.id}">${v.company_name} (${v.vendor_code || v.id})</option>`).join('');
+                } catch (e) { console.error("Failed to load vendors", e); }
+            }
+
+            function openUploadModal() {
+                loadVendorOptions();
+                document.getElementById('upload-modal').classList.remove('hidden');
+            }
+
+            function closeUploadModal() {
+                document.getElementById('upload-modal').classList.add('hidden');
+                document.getElementById('upload-form').reset();
+                document.getElementById('file-preview-text').textContent = "Drag & drop or click to upload";
+            }
+
+            function toggleUploadMode() {
+                // OCR removed, always manual
+                const manualFields = document.getElementById('manual-fields');
+                if (manualFields) manualFields.classList.remove('hidden');
+            }
+
+            function handleFileSelect(input) {
+                if (input.files && input.files[0]) {
+                    document.getElementById('file-preview-text').textContent = "Selected: " + input.files[0].name;
+                }
+            }
+
+            document.getElementById('upload-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('upload-submit-btn');
+                const status = document.getElementById('upload-status');
+                const fileInput = document.getElementById('invoice_file');
+
+                if (!fileInput.files[0]) {
+                    showToast("Please select a file", "error");
+                    return;
+                }
+
+                btn.disabled = true;
+                status.classList.remove('hidden');
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                const vendorId = document.getElementById('upload_vendor_id').value;
+                if (vendorId) formData.append('manual_vendor_id', vendorId);
+
+                formData.append('manual_invoice_no', document.getElementById('manual_invoice_no').value);
+                formData.append('manual_amount', document.getElementById('manual_amount').value);
+                formData.append('manual_date', document.getElementById('manual_date').value);
+                formData.append('manual_category', document.getElementById('manual_category').value);
+                formData.append('manual_description', document.getElementById('manual_description').value);
+
+                try {
+                    const res = await authFetch('/api/invoices/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        showToast("Invoice Uploaded Successfully", "success");
+                        closeUploadModal();
+                        grid.forceRender(); // Refresh grid.js table
+                        loadDashboardStats(); // Refresh stats
+                    } else {
+                        showToast(data.detail || data.message || "Upload Failed", "error");
+                    }
+                } catch (err) {
+                    showToast("Upload Error", "error");
+                } finally {
+                    btn.disabled = false;
+                    status.classList.add('hidden');
+                }
+            });
+
+            // Monitoring Logic
+            async function loadMonitoringLogs() {
+                const body = document.getElementById('monitoring-logs-body');
+                body.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-500 dark:text-slate-400">Loading Sentinel logs...</td></tr>';
+
+                try {
+                    const res = await authFetch('/api/monitoring/errors');
+                    const logs = await res.json();
+
+                    if (logs.length === 0) {
+                        body.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-500 dark:text-slate-400 italic">No errors detected. System is healthy.</td></tr>';
+                        return;
+                    }
+
+                    body.innerHTML = logs.map(log => `
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="py-4 text-slate-500 dark:text-slate-400 font-mono">${new Date(log.timestamp).toLocaleString()}</td>
+                            <td class="py-4"><span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300">${log.method} ${log.endpoint}</span></td>
+                            <td class="py-4 text-rose-400 font-medium">${log.error_message}</td>
+                            <td class="py-4 italic text-sky-400">${log.ai_suggestion || 'Pending AI analysis...'}</td>
+                            <td class="py-4">
+                                ${!log.ai_suggestion ? `<button onclick="analyzeError(${log.id})" class="text-teal-600 dark:text-teal-400 hover:underline mr-3">Analyze</button>` : ''}
+                                <button onclick="resolveError(${log.id})" class="text-emerald-400 hover:underline">Resolve</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } catch (err) {
+                    body.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-rose-500">Failed to load logs.</td></tr>';
+                }
+            }
+
+            async function analyzeError(id) {
+                showToast("AI analyzing stack trace...", "success");
+                await authFetch(`/api/monitoring/analyze/${id}`, { method: 'POST' });
+                loadMonitoringLogs();
+            }
+
+            async function resolveError(id) {
+                await authFetch(`/api/monitoring/resolve/${id}`, { method: 'POST' });
+                showToast("Error marked as resolved", "success");
+                loadMonitoringLogs();
+            }
+
+            // Handle Hash Routing for Monitoring
+            window.addEventListener('hashchange', () => {
+                const section = document.getElementById('monitoring-section');
+                if (window.location.hash === '#monitoring') {
+                    section.classList.remove('hidden');
+                    loadMonitoringLogs();
+                    section.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    section.classList.add('hidden');
+                }
+            });
+
+            // Initial Check
+            if (window.location.hash === '#monitoring') {
+                document.getElementById('monitoring-section').classList.remove('hidden');
+                loadMonitoringLogs();
+            }
+
+        </script>
+
+    </div>
+
+    <!-- System Health / Monitoring Section (Hidden by default, triggered by #monitoring hash) -->
+    <div id="monitoring-section" class="hidden glass p-8 rounded-3xl mt-8">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-xl font-semibold">System Health <span
+                        class="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full ml-2">Active</span>
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Real-time Sentinel error
+                    tracking & AI
+                    diagnostics.</p>
+            </div>
+            <button onclick="loadMonitoringLogs()" class="text-xs text-sky-400 hover:underline">Refresh Logs</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-white/5">
+                        <th class="pb-3">Timestamp</th>
+                        <th class="pb-3">Endpoint</th>
+                        <th class="pb-3">Error Message</th>
+                        <th class="pb-3">AI Suggestion</th>
+                        <th class="pb-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="monitoring-logs-body" class="divide-y divide-white/5">
+                    <!-- Logs populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
