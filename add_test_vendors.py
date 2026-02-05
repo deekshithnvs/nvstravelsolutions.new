@@ -11,11 +11,9 @@ def add_test_vendors():
     db = SessionLocal()
     
     try:
-        # Check if vendors already exist
+        # Check if test vendors already exist
         existing_count = db.query(Vendor).count()
-        if existing_count > 0:
-            print(f"✓ Database already has {existing_count} vendor(s)")
-            return
+        print(f"ℹ Database currently has {existing_count} vendor(s)")
         
         # Sample vendors
         test_vendors = [
