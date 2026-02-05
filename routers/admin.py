@@ -50,28 +50,51 @@ async def get_vendors(db: Session = Depends(get_db), admin = Depends(require_adm
 
 @router.post("/api/admin/vendors")
 async def add_vendor(vendor_data: VendorCreate, db: Session = Depends(get_db), admin = Depends(require_admin)):
-    # Manual Add Vendor
-    new_vendor = Vendor(**vendor_data.dict(), status=VendorStatus.VERIFIED, kyc_verified=True)
-    db.add(new_vendor)
-    db.flush() # Get ID for user linking
+    try:
+        # Check if vendor with this email already exists
+        existing_vendor = db.query(Vendor).filter(Vendor.email == vendor_data.email).first()
+        if existing_vendor:
+            raise HTTPException(status_code=400, detail=f"Vendor with email {vendor_data.email} already exists")
+        
+        # Check if user with this email already exists
+        existing_user = db.query(User).filter(User.email == vendor_data.email).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail=f"User account with email {vendor_data.email} already exists")
+        
+        # Manual Add Vendor
+        new_vendor = Vendor(**vendor_data.dict(), status=VendorStatus.VERIFIED, kyc_verified=True)
+        db.add(new_vendor)
+        db.flush() # Get ID for user linking
+        
+        # Create corresponding User account
+        # Default password as discussed: nvs@123
+        pwd_hash = get_password_hash("nvs@123")
+        new_user = User(
+            email=vendor_data.email,
+            name=vendor_data.contact_person or vendor_data.company_name,
+            password_hash=pwd_hash,
+            role="vendor",
+            vendor_id=new_vendor.id,
+            is_active=True
+        )
+        db.add(new_user)
+        
+        audit_service.log_action(db, admin["id"], AuditAction.VENDOR_UPDATE, new_vendor.id, f"Manually added Vendor {new_vendor.company_name} and created user account")
+        
+        db.commit()
+        return {"success": True, "message": "Vendor created and user account activated (Default password: nvs@123)"}
     
-    # Create corresponding User account
-    # Default password as discussed: nvs@123
-    pwd_hash = get_password_hash("nvs@123")
-    new_user = User(
-        email=vendor_data.email,
-        name=vendor_data.contact_person or vendor_data.company_name,
-        password_hash=pwd_hash,
-        role="vendor",
-        vendor_id=new_vendor.id,
-        is_active=True
-    )
-    db.add(new_user)
-    
-    audit_service.log_action(db, admin["id"], AuditAction.VENDOR_UPDATE, new_vendor.id, f"Manually added Vendor {new_vendor.company_name} and created user account")
-    
-    db.commit()
-    return {"success": True, "message": "Vendor created and user account activated (Default password: nvs@123)"}
+    except HTTPException:
+        # Re-raise HTTP exceptions (like duplicate email)
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        # Log the actual error for debugging
+        print(f"Error creating vendor: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create vendor: {str(e)}")
 
 @router.put("/api/admin/vendors/{vendor_id}")
 async def update_vendor(vendor_id: int, vendor_data: VendorCreate, db: Session = Depends(get_db), admin = Depends(require_admin)):

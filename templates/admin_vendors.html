@@ -411,10 +411,28 @@
                 closeVendorModal();
                 vendorGrid.forceRender();
             } else {
-                showToast(result.detail || result.message || "Failed to save vendor", "error");
+                // Show detailed error message
+                let errorMsg = "Failed to save vendor";
+                
+                if (result.detail) {
+                    // Handle validation errors (422)
+                    if (Array.isArray(result.detail)) {
+                        errorMsg = result.detail.map(err => `${err.loc?.join('.')}: ${err.msg}`).join(', ');
+                    } else if (typeof result.detail === 'string') {
+                        errorMsg = result.detail;
+                    } else {
+                        errorMsg = JSON.stringify(result.detail);
+                    }
+                } else if (result.message) {
+                    errorMsg = result.message;
+                }
+                
+                console.error('Vendor creation error:', result);
+                showToast(errorMsg, "error");
             }
         } catch (err) {
-            showToast("Connection error", "error");
+            console.error('Connection error:', err);
+            showToast("Connection error: " + err.message, "error");
         }
     });
 
